@@ -113,6 +113,7 @@ export const saveResult = async (result: QuizResult): Promise<{ error: any }> =>
             score: result.score,
             total_correct: result.totalCorrect,
             total_questions: result.totalQuestions,
+            duration_seconds: result.durationSeconds,
             completed_at: result.completedAt
         })
         .select()
@@ -210,9 +211,23 @@ export const getStats = async (quizId: string, startDate?: Date, endDate?: Date)
         .eq('quiz_id', quizId);
 
     if (startDate) leadsQuery = leadsQuery.gte('completed_at', startDate.toISOString());
-    if (endDate) leadsQuery = leadsQuery.lte('completed_at', endDate.toISOString());
+    if (endDate) leadsQuery = endDate ? leadsQuery.lte('completed_at', endDate.toISOString()) : leadsQuery;
 
     const { count: totalLeads } = await leadsQuery;
+
+    // 4. Get Average Stay Duration from all visits
+    let durationQuery = supabase
+        .from('quiz_events')
+        .select('duration_seconds')
+        .eq('quiz_id', quizId)
+        .eq('event_type', 'view');
+
+    if (startDate) durationQuery = durationQuery.gte('created_at', startDate.toISOString());
+    if (endDate) durationQuery = durationQuery.lte('created_at', endDate.toISOString());
+
+    const { data: durationData } = await durationQuery;
+    const totalDuration = durationData?.reduce((acc, l) => acc + (l.duration_seconds || 0), 0) || 0;
+    const avgTimeSeconds = totalViews && totalViews > 0 ? Math.round(totalDuration / totalViews) : 0;
 
     // 4. Get Funnel Data
     let funnelQuery = supabase
@@ -251,16 +266,27 @@ export const getStats = async (quizId: string, startDate?: Date, endDate?: Date)
     return {
         views,
         completions: leads, // Keep "Leads" displayed in the card as leads
-        avgTimeSeconds: 0, // Would need timestamps diff
+        avgTimeSeconds,
         conversionRate,
         funnel
     };
 };
 
-export const trackQuizView = async (quizId: string) => {
+export const trackQuizView = async (quizId: string, sessionId: string) => {
     await supabase.from('quiz_events').insert({
+        id: sessionId,
         quiz_id: quizId,
-        event_type: 'view'
+        event_type: 'view',
+        duration_seconds: 0
+    });
+};
+
+export const trackQuizDuration = async (quizId: string, sessionId: string, duration: number) => {
+    await supabase.from('quiz_events').upsert({
+        id: sessionId,
+        quiz_id: quizId,
+        event_type: 'view',
+        duration_seconds: duration
     });
 };
 

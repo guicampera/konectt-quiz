@@ -91,6 +91,7 @@ export interface QuizResult {
   score: number;
   totalCorrect?: number;
   totalQuestions?: number;
+  durationSeconds?: number;
   completedAt: string;
 }
 

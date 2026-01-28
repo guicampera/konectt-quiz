@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Quiz, Question, QuestionType } from '../types';
 import { Trophy, CheckCircle, XCircle, ArrowRight, Check, ChevronRight, HelpCircle } from 'lucide-react';
 import { saveResult } from '../services/storage';
-import { trackQuestionAnswer, trackQuestionView, trackQuizView, trackConversion } from '../services/storage';
+import { trackQuestionAnswer, trackQuestionView, trackQuizView, trackConversion, trackQuizDuration } from '../services/storage';
 import { trackEvent } from '../services/analytics';
 import { Popup } from './Popup';
 
@@ -27,6 +27,8 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
   const [feedbackStatus, setFeedbackStatus] = useState<'correct' | 'incorrect' | null>(null);
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
   const [popupConfig, setPopupConfig] = useState({ isOpen: false, message: '' });
+  const startTime = useRef<number>(Date.now());
+  const sessionId = useRef<string>(crypto.randomUUID());
 
   // Ref to prevent double tracking on StrictMode or re-renders
   const trackedSteps = useRef<Set<string>>(new Set());
@@ -82,8 +84,24 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
     });
 
     if (quiz.active) {
-      trackQuizView(quiz.id);
+      trackQuizView(quiz.id, sessionId.current);
     }
+
+    // Ping duration every 5 seconds or on unmount
+    const interval = setInterval(() => {
+      if (quiz.active) {
+        const duration = Math.round((Date.now() - startTime.current) / 1000);
+        trackQuizDuration(quiz.id, sessionId.current, duration);
+      }
+    }, 5000);
+
+    return () => {
+      clearInterval(interval);
+      if (quiz.active) {
+        const duration = Math.round((Date.now() - startTime.current) / 1000);
+        trackQuizDuration(quiz.id, sessionId.current, duration);
+      }
+    };
   }, [quiz.id]);
 
   // Track Question View (When step changes)
@@ -216,6 +234,8 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
       q.options?.some(o => o.isCorrect)
     ).length;
 
+    const durationSeconds = Math.round((Date.now() - startTime.current) / 1000);
+
     if (quiz.active) {
       await saveResult({
         quizId: quiz.id,
@@ -223,6 +243,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
         score,
         totalCorrect: correctAnswersCount,
         totalQuestions: totalScorableQuestions,
+        durationSeconds,
         completedAt: new Date().toISOString()
       });
     }
