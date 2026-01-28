@@ -35,8 +35,8 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({ value, onChange, label
         const ctx = canvas.getContext('2d');
         ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-        // Compress to WebP 80% quality for best performance/quality ratio
-        const compressedBase64 = canvas.toDataURL('image/webp', 0.8);
+        // Compress to JPEG 70% quality
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
         onChange(compressedBase64);
         setIsProcessing(false);
       };
@@ -74,8 +74,8 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({ value, onChange, label
 
       <div
         className={`relative group w-full min-h-[160px] rounded-2xl border-2 border-dashed transition-all duration-300 overflow-hidden ${isDragging
-            ? 'border-indigo-500 bg-indigo-500/10'
-            : 'border-slate-800 bg-slate-950 hover:border-slate-600 hover:bg-slate-900'
+          ? 'border-indigo-500 bg-indigo-500/10'
+          : 'border-slate-800 bg-slate-950 hover:border-slate-600 hover:bg-slate-900'
           }`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}

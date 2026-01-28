@@ -97,13 +97,20 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
     }
 
     if (currentQuestion?.type === QuestionType.LOADING_SCREEN) {
+      let msgIndex = 0;
       const texts = currentQuestion.loadingText || ['Processando...'];
-      // Skip visual message and proceed faster
+      setLoadingMessage(texts[0]);
+
+      const interval = setInterval(() => {
+        msgIndex++;
+        if (msgIndex < texts.length) setLoadingMessage(texts[msgIndex]);
+      }, 1500);
+
       const timeout = setTimeout(() => {
         handleNext(null);
-      }, (texts.length * 600) + 200);
+      }, (texts.length * 1500) + 500);
 
-      return () => { clearTimeout(timeout); };
+      return () => { clearInterval(interval); clearTimeout(timeout); };
     }
   }, [currentStep, currentQuestion]);
 
@@ -139,13 +146,13 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
           setCorrectAnswersCount(prev => prev + 1);
         }
 
-        // Delay before moving next (Faster feedback)
+        // Delay before moving next
         setTimeout(() => {
           proceedToNext(optionValue);
           setFeedbackStatus(null);
           setSelectedOptionId(null);
           setIsProcessingAnswer(false);
-        }, 600);
+        }, 1200);
         return;
       } else {
         proceedToNext(optionValue);
@@ -236,7 +243,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
       if (finalOutcome.redirectUrl) finalRedirect = finalOutcome.redirectUrl;
     }
 
-    const delay = totalScorableQuestions > 0 ? 2000 : 1000;
+    const delay = totalScorableQuestions > 0 ? 8000 : 4000;
 
     setTimeout(() => {
       if (finalRedirect) window.location.href = finalRedirect;
