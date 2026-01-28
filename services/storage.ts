@@ -109,35 +109,76 @@ export const saveResult = async (result: QuizResult): Promise<{ error: any }> =>
 };
 
 export const getStats = async (quizId: string): Promise<QuizStats> => {
-    // Fetch views and leads for stats
-    // For now, we can count leads. Views would require a separate analytics table.
-    const { count, error } = await supabase
+    // 1. Get Total Views
+    const { count: totalViews } = await supabase
+        .from('quiz_events')
+        .select('*', { count: 'exact', head: true })
+        .eq('quiz_id', quizId)
+        .eq('event_type', 'view');
+
+    // 2. Get Total Completions (Leads)
+    const { count: completions } = await supabase
         .from('leads')
         .select('*', { count: 'exact', head: true })
         .eq('quiz_id', quizId);
 
-    if (error) {
-        console.error('Error fetching stats:', error);
-    }
+    // 3. Get Funnel Data (Step views and answers)
+    const { data: events } = await supabase
+        .from('quiz_events')
+        .select('event_type, question_id')
+        .eq('quiz_id', quizId)
+        .in('event_type', ['step_view', 'step_answer']);
+
+    // 4. Group events by question_id
+    const funnelMap: Record<string, { views: number; completed: number }> = {};
+    events?.forEach(e => {
+        if (!e.question_id) return;
+        if (!funnelMap[e.question_id]) funnelMap[e.question_id] = { views: 0, completed: 0 };
+
+        if (e.event_type === 'step_view') funnelMap[e.question_id].views++;
+        if (e.event_type === 'step_answer') funnelMap[e.question_id].completed++;
+    });
+
+    // Convert map to array format for frontend
+    const funnel = Object.entries(funnelMap).map(([questionId, data]) => ({
+        questionId,
+        views: data.views,
+        completed: data.completed,
+        dropOffs: Math.max(0, data.views - data.completed)
+    }));
+
+    const views = totalViews || 0;
+    const leads = completions || 0;
+    const conversionRate = views > 0 ? Math.round((leads / views) * 100) : 0;
 
     return {
-        views: 0, // Need analytics table
-        completions: count || 0,
-        avgTimeSeconds: 0,
-        conversionRate: 0,
-        funnel: []
+        views,
+        completions: leads,
+        avgTimeSeconds: 0, // Would need timestamps diff
+        conversionRate,
+        funnel
     };
 };
 
-// Tracking mocks for now
 export const trackQuizView = async (quizId: string) => {
-    console.log('Quiz view:', quizId);
+    await supabase.from('quiz_events').insert({
+        quiz_id: quizId,
+        event_type: 'view'
+    });
 };
 
 export const trackQuestionView = async (quizId: string, questionId: string) => {
-    console.log('Question view:', quizId, questionId);
+    await supabase.from('quiz_events').insert({
+        quiz_id: quizId,
+        event_type: 'step_view',
+        question_id: questionId
+    });
 };
 
 export const trackQuestionAnswer = async (quizId: string, questionId: string) => {
-    console.log('Question answer:', quizId, questionId);
+    await supabase.from('quiz_events').insert({
+        quiz_id: quizId,
+        event_type: 'step_answer',
+        question_id: questionId
+    });
 };
