@@ -140,6 +140,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onEdit, onPrevie
     }
   };
 
+  const handleToggleStatus = async (quiz: Quiz) => {
+    const updatedQuiz = { ...quiz, active: !quiz.active };
+    const { error } = await saveQuiz(updatedQuiz);
+    if (!error) {
+      setTrigger(t => t + 1);
+    }
+  };
+
   const createNewQuiz = async () => {
     const newQuiz: Quiz = {
       id: crypto.randomUUID(),
@@ -375,9 +383,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onEdit, onPrevie
                       <h3 className="font-bold text-lg text-white line-clamp-1">{quiz.title}</h3>
                       <p className="text-xs text-slate-500 font-mono mt-1">/{quiz.slug}</p>
                     </div>
-                    <span className={`px-2 py-1 rounded-full text-[10px] uppercase font-bold tracking-wide ${quiz.active ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-slate-800 text-slate-500'}`}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleStatus(quiz);
+                      }}
+                      className={`px-3 py-1 rounded-full text-[10px] uppercase font-bold tracking-wide transition-all ${quiz.active ? 'bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500/20' : 'bg-slate-800 text-slate-500 border border-transparent hover:bg-slate-700'}`}
+                    >
                       {quiz.active ? 'Ativo' : 'Pausado'}
-                    </span>
+                    </button>
                   </div>
 
                   <div className="flex justify-between mt-6 text-sm text-slate-400 bg-slate-950/50 p-3 rounded-lg border border-slate-800/50">

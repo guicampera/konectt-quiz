@@ -71,18 +71,23 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
     if (viewTracked.current) return;
     viewTracked.current = true;
 
-    trackQuizView(quiz.id);
     trackEvent('ViewContent', {
       content_name: quiz.title,
       content_ids: [quiz.id],
       content_type: 'quiz'
     });
+
+    if (quiz.active) {
+      trackQuizView(quiz.id);
+    }
   }, [quiz.id]);
 
   // Track Question View (When step changes)
   useEffect(() => {
     if (currentQuestion && !trackedSteps.current.has(currentQuestion.id + '_view')) {
-      trackQuestionView(quiz.id, currentQuestion.id);
+      if (quiz.active) {
+        trackQuestionView(quiz.id, currentQuestion.id);
+      }
       trackedSteps.current.add(currentQuestion.id + '_view');
 
       trackEvent('PageView', {
@@ -174,7 +179,9 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
   };
 
   const proceedToNext = (val: any) => {
-    trackQuestionAnswer(quiz.id, currentQuestion.id);
+    if (quiz.active) {
+      trackQuestionAnswer(quiz.id, currentQuestion.id);
+    }
 
     const updatedAnswers = { ...answers };
     if (val !== null) {
@@ -193,7 +200,9 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
 
   const finishQuiz = async (finalAnswers: Record<string, any>) => {
     setIsFinished(true);
-    trackConversion(quiz.id); // Track conversion when reaching the end/redirect
+    if (quiz.active) {
+      trackConversion(quiz.id); // Track conversion when reaching the end/redirect
+    }
     const score = Object.values(finalAnswers).reduce((acc: number, val: any) =>
       typeof val === 'number' ? acc + val : acc, 0);
 
@@ -203,14 +212,16 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
       q.options?.some(o => o.isCorrect)
     ).length;
 
-    await saveResult({
-      quizId: quiz.id,
-      answers: finalAnswers,
-      score,
-      totalCorrect: correctAnswersCount,
-      totalQuestions: totalScorableQuestions,
-      completedAt: new Date().toISOString()
-    });
+    if (quiz.active) {
+      await saveResult({
+        quizId: quiz.id,
+        answers: finalAnswers,
+        score,
+        totalCorrect: correctAnswersCount,
+        totalQuestions: totalScorableQuestions,
+        completedAt: new Date().toISOString()
+      });
+    }
 
     trackEvent('Lead', {
       value: score,
