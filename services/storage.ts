@@ -165,20 +165,27 @@ export const getStats = async (quizId: string): Promise<QuizStats> => {
         .eq('quiz_id', quizId)
         .eq('event_type', 'view');
 
-    // 2. Get Total Completions (Leads)
-    const { count: completions } = await supabase
+    // 2. Get Total Conversions (Redirects reached)
+    const { count: totalConversions } = await supabase
+        .from('quiz_events')
+        .select('*', { count: 'exact', head: true })
+        .eq('quiz_id', quizId)
+        .eq('event_type', 'conversion');
+
+    // 3. Get Total Leads (Form submissions)
+    const { count: totalLeads } = await supabase
         .from('leads')
         .select('*', { count: 'exact', head: true })
         .eq('quiz_id', quizId);
 
-    // 3. Get Funnel Data (Step views and answers)
+    // 4. Get Funnel Data
     const { data: events } = await supabase
         .from('quiz_events')
         .select('event_type, question_id')
         .eq('quiz_id', quizId)
         .in('event_type', ['step_view', 'step_answer']);
 
-    // 4. Group events by question_id
+    // 5. Group events by question_id
     const funnelMap: Record<string, { views: number; completed: number }> = {};
     events?.forEach(e => {
         if (!e.question_id) return;
@@ -188,7 +195,6 @@ export const getStats = async (quizId: string): Promise<QuizStats> => {
         if (e.event_type === 'step_answer') funnelMap[e.question_id].completed++;
     });
 
-    // Convert map to array format for frontend
     const funnel = Object.entries(funnelMap).map(([questionId, data]) => ({
         questionId,
         views: data.views,
@@ -197,12 +203,13 @@ export const getStats = async (quizId: string): Promise<QuizStats> => {
     }));
 
     const views = totalViews || 0;
-    const leads = completions || 0;
-    const conversionRate = views > 0 ? Math.round((leads / views) * 100) : 0;
+    const conversions = totalConversions || 0;
+    const leads = totalLeads || 0;
+    const conversionRate = views > 0 ? Math.round((conversions / views) * 100) : 0;
 
     return {
         views,
-        completions: leads,
+        completions: leads, // Keep "Leads" displayed in the card as leads
         avgTimeSeconds: 0, // Would need timestamps diff
         conversionRate,
         funnel
@@ -213,6 +220,13 @@ export const trackQuizView = async (quizId: string) => {
     await supabase.from('quiz_events').insert({
         quiz_id: quizId,
         event_type: 'view'
+    });
+};
+
+export const trackConversion = async (quizId: string) => {
+    await supabase.from('quiz_events').insert({
+        quiz_id: quizId,
+        event_type: 'conversion'
     });
 };
 

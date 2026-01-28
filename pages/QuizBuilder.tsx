@@ -29,7 +29,7 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({ quiz: initialQuiz, onB
       title: 'Título da Etapa',
       required: true,
       options: [QuestionType.SINGLE_CHOICE, QuestionType.MULTI_CHOICE].includes(type) ? [{ id: crypto.randomUUID(), label: 'Nova Opção', value: 0, isCorrect: false }] : undefined,
-      fields: type === QuestionType.DATA_COLLECTION ? [{ id: 'f1', label: 'E-mail', placeholder: 'seu@email.com', type: 'email', required: true }] : undefined
+      fields: type === QuestionType.DATA_COLLECTION ? [{ id: 'f1', label: 'Nome', placeholder: '', type: 'text', required: true }] : undefined
     };
     setQuiz(prev => ({ ...prev, questions: [...prev.questions, newQ] }));
     setEditingQuestionId(newQ.id);
@@ -152,8 +152,13 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({ quiz: initialQuiz, onB
                             const newFields = [...(q.fields || [])];
                             newFields[fi].label = e.target.value;
                             updateQuestion(q.id, { fields: newFields });
-                          }} placeholder="Label do Campo" />
-                          <select className="bg-slate-900 border-slate-700 rounded-lg text-xs" value={f.type} onChange={(e) => {
+                          }} placeholder="Label (Ex: Nome)" />
+                          <input className="flex-1 bg-slate-900 border-slate-700 rounded-lg text-sm" value={f.placeholder} onChange={(e) => {
+                            const newFields = [...(q.fields || [])];
+                            newFields[fi].placeholder = e.target.value;
+                            updateQuestion(q.id, { fields: newFields });
+                          }} placeholder="Exemplo (Placeholder)" />
+                          <select className="w-24 bg-slate-900 border-slate-700 rounded-lg text-xs" value={f.type} onChange={(e) => {
                             const newFields = [...(q.fields || [])];
                             newFields[fi].type = e.target.value as any;
                             updateQuestion(q.id, { fields: newFields });

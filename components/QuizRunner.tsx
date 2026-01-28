@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Quiz, Question, QuestionType } from '../types';
 import * as LucideIcons from 'lucide-react';
 import { saveResult } from '../services/storage';
-import { trackQuestionAnswer, trackQuestionView, trackQuizView } from '../services/storage';
+import { trackQuestionAnswer, trackQuestionView, trackQuizView, trackConversion } from '../services/storage';
 import { trackEvent } from '../services/analytics';
 import { Popup } from './Popup';
 
@@ -182,6 +182,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
 
   const finishQuiz = async (finalAnswers: Record<string, any>) => {
     setIsFinished(true);
+    trackConversion(quiz.id); // Track conversion when reaching the end/redirect
     const score = Object.values(finalAnswers).reduce((acc: number, val: any) =>
       typeof val === 'number' ? acc + val : acc, 0);
 
