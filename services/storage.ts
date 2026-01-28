@@ -157,6 +157,27 @@ export const getLeads = async (quizId: string) => {
     return data;
 };
 
+export const resetQuizStats = async (quizId: string) => {
+    // 1. Delete all leads for this quiz
+    const { error: leadsError } = await supabase
+        .from('leads')
+        .delete()
+        .eq('quiz_id', quizId);
+
+    // 2. Delete all events for this quiz
+    const { error: eventsError } = await supabase
+        .from('quiz_events')
+        .delete()
+        .eq('quiz_id', quizId);
+
+    if (leadsError || eventsError) {
+        console.error('Error resetting stats:', leadsError || eventsError);
+        return { error: leadsError || eventsError };
+    }
+
+    return { success: true };
+};
+
 export const getStats = async (quizId: string, startDate?: Date, endDate?: Date): Promise<QuizStats> => {
     // 1. Get Total Views
     let viewsQuery = supabase

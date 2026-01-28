@@ -1,9 +1,9 @@
 
 import React, { useState } from 'react';
-import { getQuizzes, getStats, deleteQuiz, saveQuiz, getLeads } from '../services/storage';
+import { getQuizzes, getStats, deleteQuiz, saveQuiz, getLeads, resetQuizStats } from '../services/storage';
 import { supabase } from '../services/auth';
 import { Quiz, QuestionType } from '../types';
-import { Plus, BarChart2, Edit2, Trash2, ExternalLink, Play, Copy, LogOut, Zap, Users, Activity, Filter, ArrowDown, Download, Link as LinkIcon, Check, Calendar } from 'lucide-react';
+import { Plus, BarChart2, Edit2, Trash2, ExternalLink, Play, Copy, LogOut, Zap, Users, Activity, Filter, ArrowDown, Download, Link as LinkIcon, Check, Calendar, RefreshCcw } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, AreaChart, Area, Cell } from 'recharts';
 import { motion } from 'framer-motion';
 
@@ -128,6 +128,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onEdit, onPrevie
     navigator.clipboard.writeText(url);
     setCopiedId(quiz.id);
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleResetStats = async (quiz: Quiz) => {
+    if (confirm(`Tem certeza que deseja ZERAR todas as métricas do quiz "${quiz.title}"? Todos os leads e visualizações serão excluídos permanentemente.`)) {
+      const { success } = await resetQuizStats(quiz.id);
+      if (success) {
+        setTrigger(t => t + 1);
+        alert('Métricas zeradas com sucesso!');
+      }
+    }
   };
 
   const createNewQuiz = async () => {
@@ -408,6 +418,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onEdit, onPrevie
                     </button>
                     <button onClick={() => handleExportLeads(quiz)} className="p-2 hover:bg-slate-800 rounded-lg text-green-400 transition-colors" title="Exportar Leads (CSV)">
                       <Download size={16} />
+                    </button>
+                    <button onClick={() => handleResetStats(quiz)} className="p-2 hover:bg-slate-800 rounded-lg text-orange-400 transition-colors" title="Zerar Métricas">
+                      <RefreshCcw size={16} />
                     </button>
                     <button onClick={() => handleDelete(quiz.id)} className="p-2 hover:bg-red-500/10 rounded-lg text-red-500 transition-colors" title="Excluir">
                       <Trash2 size={16} />
