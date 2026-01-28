@@ -115,15 +115,15 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
 
     // Logic for Single Choice scoring and Feedback
     if (currentQuestion.type === QuestionType.SINGLE_CHOICE) {
-      const selectedOpt = currentQuestion.options?.find(o => o.value === val);
-      // Check if this question allows scoring (has at least one correct answer defined)
+      const selectedOpt = val; // Now receiving the whole option object
+      const optionValue = selectedOpt.value;
       const hasCorrectAnswer = currentQuestion.options?.some(o => o.isCorrect);
 
       if (hasCorrectAnswer) {
         setIsProcessingAnswer(true);
-        setSelectedOptionId(currentQuestion.options?.find(o => o.value === val)?.id || null);
+        setSelectedOptionId(selectedOpt.id);
 
-        const isCorrect = selectedOpt?.isCorrect;
+        const isCorrect = selectedOpt.isCorrect;
         setFeedbackStatus(isCorrect ? 'correct' : 'incorrect');
 
         if (isCorrect) {
@@ -132,11 +132,14 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
 
         // Delay before moving next
         setTimeout(() => {
-          proceedToNext(val);
+          proceedToNext(optionValue);
           setFeedbackStatus(null);
           setSelectedOptionId(null);
           setIsProcessingAnswer(false);
         }, 1200);
+        return;
+      } else {
+        proceedToNext(optionValue);
         return;
       }
     }
@@ -374,7 +377,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
                   disabled={isProcessingAnswer}
                   whileHover={!isProcessingAnswer ? { scale: 1.02, y: -2 } : {}}
                   whileTap={!isProcessingAnswer ? { scale: 0.98 } : {}}
-                  onClick={() => handleNext(opt.value)}
+                  onClick={() => handleNext(opt)}
                   className={`w-full ${isGrid ? 'flex-col p-3' : 'p-5 flex-row'} rounded-2xl flex items-center gap-4 text-left border-2 transition-all shadow-xl backdrop-blur-md relative overflow-hidden`}
                   style={{ backgroundColor: bgColor, borderColor: borderColor }}
                 >
