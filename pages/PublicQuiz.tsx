@@ -35,7 +35,14 @@ export const PublicQuiz: React.FC = () => {
     }, [slug]);
 
     if (loading) {
-        return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Carregando...</div>;
+        return (
+            <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-sm font-medium opacity-50 tracking-widest uppercase">Carregando Funil...</p>
+                </div>
+            </div>
+        );
     }
 
     if (!quiz) {

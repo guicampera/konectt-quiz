@@ -1,12 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
-import { AdminDashboard } from './pages/AdminDashboard';
-import { QuizBuilder } from './pages/QuizBuilder';
-import { Login } from './pages/Login';
-import { PublicQuiz } from './pages/PublicQuiz';
 import { Quiz } from './types';
 import { supabase } from './services/auth';
 import { getQuizzes } from './services/storage';
+
+// Lazy load components for performance
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
+const QuizBuilder = lazy(() => import('./pages/QuizBuilder').then(m => ({ default: m.QuizBuilder })));
+const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
+const PublicQuiz = lazy(() => import('./pages/PublicQuiz').then(m => ({ default: m.PublicQuiz })));
 
 const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<any>(null);
@@ -82,14 +84,16 @@ const LoginWrapper = () => {
 const App: React.FC = () => {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<LoginWrapper />} />
-        <Route path="/admin" element={<RequireAuth><DashboardWrapper /></RequireAuth>} />
-        <Route path="/builder/:id" element={<RequireAuth><BuilderWrapper /></RequireAuth>} />
-        <Route path="/quiz/:slug" element={<PublicQuiz />} />
-        {/* Default Redirect */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
-      </Routes>
+      <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-white"><div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>}>
+        <Routes>
+          <Route path="/login" element={<LoginWrapper />} />
+          <Route path="/admin" element={<RequireAuth><DashboardWrapper /></RequireAuth>} />
+          <Route path="/builder/:id" element={<RequireAuth><BuilderWrapper /></RequireAuth>} />
+          <Route path="/quiz/:slug" element={<PublicQuiz />} />
+          {/* Default Redirect */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 };

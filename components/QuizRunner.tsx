@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Quiz, Question, QuestionType } from '../types';
-import * as LucideIcons from 'lucide-react';
+import { Trophy, CheckCircle, XCircle, ArrowRight, Check, ChevronRight, HelpCircle } from 'lucide-react';
 import { saveResult } from '../services/storage';
 import { trackQuestionAnswer, trackQuestionView, trackQuizView, trackConversion } from '../services/storage';
 import { trackEvent } from '../services/analytics';
@@ -34,8 +34,12 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
 
   const IconRender = ({ name, className }: { name?: string; className?: string }) => {
     if (!name) return null;
-    const Icon = (LucideIcons as any)[name];
-    return Icon ? <Icon className={className} /> : null;
+    // Common icons map for user-selected icons to avoid full bundle
+    const icons: Record<string, any> = {
+      Trophy, CheckCircle, XCircle, ArrowRight, Check, ChevronRight, HelpCircle
+    };
+    const Icon = icons[name] || HelpCircle;
+    return <Icon className={className} />;
   };
 
   const currentQuestion = quiz.questions[currentStep];
@@ -146,13 +150,13 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
           setCorrectAnswersCount(prev => prev + 1);
         }
 
-        // Delay before moving next
+        // Delay before moving next (optimized from 1200ms to 600ms)
         setTimeout(() => {
           proceedToNext(optionValue);
           setFeedbackStatus(null);
           setSelectedOptionId(null);
           setIsProcessingAnswer(false);
-        }, 1200);
+        }, 600);
         return;
       } else {
         proceedToNext(optionValue);
@@ -252,9 +256,9 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
   };
 
   const containerVariants = {
-    initial: { opacity: 0, scale: 0.95, y: 20 },
+    initial: { opacity: 0, scale: 0.98, y: 10 },
     animate: { opacity: 1, scale: 1, y: 0 },
-    exit: { opacity: 0, scale: 1.05, y: -20 }
+    exit: { opacity: 0, scale: 1.02, y: -10 }
   };
 
   if (isFinished) {
@@ -276,7 +280,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
             </motion.div>
           ) : (
             <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-              <LucideIcons.Trophy className="w-10 h-10 text-green-500" />
+              <Trophy className="w-10 h-10 text-green-500" />
             </div>
           )}
 
@@ -332,11 +336,18 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
           initial="initial"
           animate="animate"
           exit="exit"
-          transition={{ duration: 0.4, ease: "easeOut" }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
           className="w-full max-w-xl z-10"
         >
           {quiz.theme.logoUrl && (
-            <img src={quiz.theme.logoUrl} alt="Logo" className="h-12 mx-auto mb-10 object-contain" />
+            <img
+              src={quiz.theme.logoUrl}
+              alt="Logo"
+              className="h-12 mx-auto mb-10 object-contain"
+              width="200"
+              height="48"
+              fetchpriority="high"
+            />
           )}
 
           <div className="text-center mb-10">
@@ -354,7 +365,16 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
                 animate={{ opacity: 1, y: 0 }}
                 className="mb-8 rounded-3xl overflow-hidden shadow-2xl border border-white/10 mx-auto max-w-lg"
               >
-                <img src={currentQuestion.mediaUrl} className="w-full h-auto object-cover max-h-[400px]" alt="" />
+                <img
+                  src={currentQuestion.mediaUrl}
+                  className="w-full h-auto object-cover max-h-[400px]"
+                  alt=""
+                  loading={currentStep === 0 ? "eager" : "lazy"}
+                  decoding="async"
+                  width="800"
+                  height="450"
+                  style={{ aspectRatio: '16/9' }}
+                />
               </motion.div>
             )}
 
@@ -421,17 +441,17 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
                   {/* Status Icons */}
                   {!isGrid && (
                     <div className="ml-auto">
-                      {feedbackStatus === 'correct' && opt.id === selectedOptionId && <LucideIcons.CheckCircle className="w-6 h-6 text-green-500" />}
-                      {feedbackStatus === 'incorrect' && opt.id === selectedOptionId && <LucideIcons.XCircle className="w-6 h-6 text-red-500" />}
-                      {!feedbackStatus && <LucideIcons.ArrowRight className="w-5 h-5 opacity-30" />}
+                      {feedbackStatus === 'correct' && opt.id === selectedOptionId && <CheckCircle className="w-6 h-6 text-green-500" />}
+                      {feedbackStatus === 'incorrect' && opt.id === selectedOptionId && <XCircle className="w-6 h-6 text-red-500" />}
+                      {!feedbackStatus && <ArrowRight className="w-5 h-5 opacity-30" />}
                     </div>
                   )}
 
                   {/* Overlay for grid feedback */}
                   {isGrid && feedbackStatus && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
-                      {feedbackStatus === 'correct' && (opt.id === selectedOptionId || opt.isCorrect) && <LucideIcons.CheckCircle className="w-10 h-10 text-green-500" />}
-                      {feedbackStatus === 'incorrect' && opt.id === selectedOptionId && <LucideIcons.XCircle className="w-10 h-10 text-red-500" />}
+                      {feedbackStatus === 'correct' && (opt.id === selectedOptionId || opt.isCorrect) && <CheckCircle className="w-10 h-10 text-green-500" />}
+                      {feedbackStatus === 'incorrect' && opt.id === selectedOptionId && <XCircle className="w-10 h-10 text-red-500" />}
                     </div>
                   )}
                 </motion.button>
@@ -458,13 +478,13 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
                           <img src={opt.imageUrl} className="w-full h-full object-cover" />
                           {isSelected && (
                             <div className="absolute inset-0 flex items-center justify-center" style={{ backgroundColor: `${quiz.theme.primaryColor}66` }}>
-                              <LucideIcons.Check className="w-8 h-8 text-white" />
+                              <Check className="w-8 h-8 text-white" />
                             </div>
                           )}
                         </div>
                       ) : (
                         <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${isSelected ? 'bg-indigo-500 border-indigo-500' : 'border-white/20'}`} style={{ backgroundColor: isSelected ? quiz.theme.primaryColor : 'transparent', borderColor: isSelected ? quiz.theme.primaryColor : 'white/20' }}>
-                          {isSelected && <LucideIcons.Check className="w-4 h-4 text-white" />}
+                          {isSelected && <Check className="w-4 h-4 text-white" />}
                         </div>
                       )}
 
