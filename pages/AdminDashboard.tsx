@@ -15,6 +15,7 @@ interface AdminDashboardProps {
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onEdit, onPreview, onLogout }) => {
   const [quizzes, setQuizzes] = React.useState<Quiz[]>([]);
+  const [statsMap, setStatsMap] = React.useState<Record<string, any>>({});
   const [trigger, setTrigger] = React.useState(0);
   const [userEmail, setUserEmail] = React.useState('');
   const [selectedQuizId, setSelectedQuizId] = useState<string | null>(null);
@@ -23,6 +24,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onEdit, onPrevie
     const loadData = async () => {
       const data = await getQuizzes();
       setQuizzes(data);
+
+      // Fetch stats for all quizzes in parallel
+      const statsArray = await Promise.all(data.map(q => getStats(q.id)));
+      const stats: Record<string, any> = {};
+      data.forEach((q, i) => {
+        stats[q.id] = statsArray[i];
+      });
+      setStatsMap(stats);
+
       const { data: { user } } = await supabase.auth.getUser();
       if (user) setUserEmail(user.email || '');
     };
@@ -91,19 +101,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onEdit, onPrevie
 
   // Calculate Global Stats
   const globalStats = quizzes.reduce((acc, quiz) => {
-    const s = getStats(quiz.id);
+    const s = statsMap[quiz.id] || { views: 0, completions: 0 };
     return {
       views: acc.views + s.views,
-      completions: acc.completions + s.completions
+      completions: acc.completions + (s.completions || 0)
     }
   }, { views: 0, completions: 0 });
 
   const getFunnelData = (quizId: string) => {
-    const stats = getStats(quizId);
+    const stats = statsMap[quizId];
     const quiz = quizzes.find(q => q.id === quizId);
-    if (!quiz || !stats.funnel) return [];
+    if (!quiz || !stats || !stats.funnel) return [];
 
-    return stats.funnel.map((step, index) => {
+    return stats.funnel.map((step: any, index: number) => {
       const qTitle = quiz.questions.find(q => q.id === step.questionId)?.title || `Passo ${index + 1}`;
       // Retention: (Completed / Views) * 100
       const retention = step.views > 0 ? Math.round((step.completed / step.views) * 100) : 0;
@@ -121,7 +131,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onEdit, onPrevie
     });
   };
 
-  const selectedQuizStats = selectedQuizId ? getStats(selectedQuizId) : null;
+  const selectedQuizStats = selectedQuizId ? statsMap[selectedQuizId] : null;
   const funnelData = selectedQuizId ? getFunnelData(selectedQuizId) : [];
 
   return (
@@ -249,7 +259,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onEdit, onPrevie
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {quizzes.map((quiz) => {
-            const stats = getStats(quiz.id);
+            const stats = statsMap[quiz.id] || { conversionRate: 0, avgTimeSeconds: 0, completions: 0 };
             const isSelected = selectedQuizId === quiz.id;
 
             return (
