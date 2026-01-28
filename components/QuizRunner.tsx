@@ -55,6 +55,17 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
     return url;
   };
 
+  const getFontSizeClass = (size?: string) => {
+    switch (size) {
+      case 'sm': return 'text-sm';
+      case 'base': return 'text-base';
+      case 'lg': return 'text-lg';
+      case 'xl': return 'text-xl';
+      case '2xl': return 'text-2xl';
+      default: return 'text-xl'; // Default as per previous hardcoded value
+    }
+  };
+
   // Track Quiz View (Once per mount)
   useEffect(() => {
     if (viewTracked.current) return;
@@ -393,7 +404,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
                   )}
 
                   <div className={`flex-1 ${isGrid ? 'text-center mt-2' : ''}`}>
-                    <span className={`${isGrid ? 'text-sm' : 'text-xl'} font-bold line-clamp-2`}>{opt.label}</span>
+                    <span className={`${isGrid ? 'text-sm' : getFontSizeClass(quiz.theme.fontSize)} font-bold`}>{opt.label}</span>
                   </div>
 
                   {/* Status Icons */}
@@ -447,7 +458,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
                       )}
 
                       <div className={`flex-1 ${isGrid ? 'text-center mt-2' : ''}`}>
-                        <span className={`${isGrid ? 'text-sm' : 'text-xl'} font-bold line-clamp-2`}>{opt.label}</span>
+                        <span className={`${isGrid ? 'text-sm' : getFontSizeClass(quiz.theme.fontSize)} font-bold`}>{opt.label}</span>
                       </div>
                     </motion.button>
                   );

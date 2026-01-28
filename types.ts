@@ -50,6 +50,7 @@ export interface QuizTheme {
   backgroundImage?: string;
   logoUrl?: string;
   buttonRadius: 'none' | 'md' | 'full';
+  fontSize?: 'sm' | 'base' | 'lg' | 'xl' | '2xl';
 }
 
 export interface TrackingConfig {

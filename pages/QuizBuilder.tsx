@@ -354,6 +354,21 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({ quiz: initialQuiz, onB
                   ))}
                 </div>
               </div>
+
+              <div>
+                <label className="block text-xs font-black uppercase text-slate-500 mb-3 ml-1">Tamanho da Fonte das Opções</label>
+                <div className="grid grid-cols-5 gap-2">
+                  {(['sm', 'base', 'lg', 'xl', '2xl'] as const).map((size) => (
+                    <button
+                      key={size}
+                      onClick={() => setQuiz({ ...quiz, theme: { ...quiz.theme, fontSize: size } })}
+                      className={`py-2 rounded-xl text-xs font-bold border-2 transition-all ${quiz.theme.fontSize === size || (!quiz.theme.fontSize && size === 'lg') ? 'border-indigo-600 bg-indigo-600/10 text-white' : 'border-slate-800 text-slate-500 hover:border-slate-700'}`}
+                    >
+                      {size.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         )}
