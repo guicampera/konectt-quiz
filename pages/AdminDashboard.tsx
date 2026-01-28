@@ -1,9 +1,9 @@
 
 import React, { useState } from 'react';
-import { getQuizzes, getStats, deleteQuiz, saveQuiz } from '../services/storage';
+import { getQuizzes, getStats, deleteQuiz, saveQuiz, getLeads } from '../services/storage';
 import { supabase } from '../services/auth';
 import { Quiz, QuestionType } from '../types';
-import { Plus, BarChart2, Edit2, Trash2, ExternalLink, Play, Copy, LogOut, Zap, Users, Activity, Filter, ArrowDown } from 'lucide-react';
+import { Plus, BarChart2, Edit2, Trash2, ExternalLink, Play, Copy, LogOut, Zap, Users, Activity, Filter, ArrowDown, Download, Link as LinkIcon, Check } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, AreaChart, Area, Cell } from 'recharts';
 import { motion } from 'framer-motion';
 
@@ -19,6 +19,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onEdit, onPrevie
   const [trigger, setTrigger] = React.useState(0);
   const [userEmail, setUserEmail] = React.useState('');
   const [selectedQuizId, setSelectedQuizId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   React.useEffect(() => {
     const loadData = async () => {
@@ -60,6 +61,47 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onEdit, onPrevie
     };
     await saveQuiz(newQuiz);
     setTrigger(t => t + 1);
+  };
+
+  const handleExportLeads = async (quiz: Quiz) => {
+    const leads = await getLeads(quiz.id);
+    if (!leads || leads.length === 0) {
+      alert('Nenhum lead encontrado para este quiz.');
+      return;
+    }
+
+    // Generate CSV
+    const headers = ['ID', 'Data', 'Score', 'Acertos', 'Total Perguntas', 'Respostas (JSON)'];
+    const rows = leads.map(l => [
+      l.id,
+      new Date(l.completed_at).toLocaleString(),
+      l.score,
+      l.total_correct,
+      l.total_questions,
+      JSON.stringify(l.answers)
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `leads-${quiz.slug}-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleCopyLink = (quiz: Quiz) => {
+    const url = `${window.location.origin}/quiz/${quiz.slug}`;
+    navigator.clipboard.writeText(url);
+    setCopiedId(quiz.id);
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
   const createNewQuiz = async () => {
@@ -308,11 +350,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onEdit, onPrevie
                     <button onClick={() => onPreview(quiz)} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors" title="Visualizar">
                       <Play size={16} />
                     </button>
+                    <button onClick={() => handleCopyLink(quiz)} className="p-2 hover:bg-slate-800 rounded-lg text-indigo-400 transition-colors" title="Copiar Link">
+                      {copiedId === quiz.id ? <Check size={16} className="text-green-500" /> : <LinkIcon size={16} />}
+                    </button>
                     <button onClick={() => onEdit(quiz)} className="p-2 hover:bg-slate-800 rounded-lg text-blue-400 transition-colors" title="Editar">
                       <Edit2 size={16} />
                     </button>
                     <button onClick={() => handleDuplicate(quiz)} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors" title="Duplicar">
                       <Copy size={16} />
+                    </button>
+                    <button onClick={() => handleExportLeads(quiz)} className="p-2 hover:bg-slate-800 rounded-lg text-green-400 transition-colors" title="Exportar Leads (CSV)">
+                      <Download size={16} />
                     </button>
                     <button onClick={() => handleDelete(quiz.id)} className="p-2 hover:bg-red-500/10 rounded-lg text-red-500 transition-colors" title="Excluir">
                       <Trash2 size={16} />

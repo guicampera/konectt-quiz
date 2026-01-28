@@ -77,6 +77,7 @@ export interface Quiz {
   theme: QuizTheme;
   tracking: TrackingConfig;
   redirectUrl: string;
+  webhookUrl?: string;
   showScore: boolean;
   outcomes?: QuizOutcome[];
   active: boolean;

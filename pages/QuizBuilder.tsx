@@ -380,6 +380,16 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({ quiz: initialQuiz, onB
                     <label className="block text-xs font-bold uppercase opacity-50 mb-2">URL Final de Sucesso</label>
                     <input value={quiz.redirectUrl} onChange={(e) => setQuiz({ ...quiz, redirectUrl: e.target.value })} className="w-full bg-slate-950 border-slate-800 rounded-xl p-4 focus:ring-2 focus:ring-indigo-600" placeholder="https://checkout.exemplo.com/final" />
                   </div>
+                  <div>
+                    <label className="block text-xs font-bold uppercase opacity-50 mb-2">Webhook URL (Opcional)</label>
+                    <input
+                      value={quiz.webhookUrl || ''}
+                      onChange={(e) => setQuiz({ ...quiz, webhookUrl: e.target.value })}
+                      className="w-full bg-slate-950 border-slate-800 rounded-xl p-4 focus:ring-2 focus:ring-indigo-600"
+                      placeholder="https://sua-api.com/webhook"
+                    />
+                    <p className="text-[10px] text-slate-500 mt-2">Enviaremos os dados do lead via POST JSON assim que o quiz for concluído.</p>
+                  </div>
 
                   <div className="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800">
                     <div>

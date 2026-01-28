@@ -23,6 +23,7 @@ export const getQuizzes = async (): Promise<Quiz[]> => {
         theme: q.theme,
         tracking: q.tracking,
         redirectUrl: q.redirect_url,
+        webhookUrl: q.webhook_url,
         showScore: q.show_score,
         outcomes: q.outcomes,
         active: q.active,
@@ -51,6 +52,7 @@ export const getQuizBySlug = async (slug: string): Promise<Quiz | null> => {
         theme: data.theme,
         tracking: data.tracking,
         redirectUrl: data.redirect_url,
+        webhookUrl: data.webhook_url,
         showScore: data.show_score,
         outcomes: data.outcomes,
         active: data.active,
@@ -72,6 +74,7 @@ export const saveQuiz = async (quiz: Quiz): Promise<{ error: any }> => {
         theme: quiz.theme,
         tracking: quiz.tracking,
         redirect_url: quiz.redirectUrl,
+        webhook_url: quiz.webhookUrl,
         show_score: quiz.showScore,
         outcomes: quiz.outcomes,
         active: quiz.active
@@ -94,7 +97,15 @@ export const deleteQuiz = async (id: string): Promise<{ error: any }> => {
 };
 
 export const saveResult = async (result: QuizResult): Promise<{ error: any }> => {
-    const { error } = await supabase
+    // 1. Get Quiz info to check for webhook
+    const { data: quizData } = await supabase
+        .from('quizzes')
+        .select('webhook_url, title')
+        .eq('id', result.quizId)
+        .single();
+
+    // 2. Save lead to DB
+    const { data: leadData, error } = await supabase
         .from('leads')
         .insert({
             quiz_id: result.quizId,
@@ -103,9 +114,47 @@ export const saveResult = async (result: QuizResult): Promise<{ error: any }> =>
             total_correct: result.totalCorrect,
             total_questions: result.totalQuestions,
             completed_at: result.completedAt
-        });
+        })
+        .select()
+        .single();
+
+    // 3. Trigger Webhook if exists
+    if (quizData?.webhook_url) {
+        try {
+            fetch(quizData.webhook_url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                mode: 'no-cors', // Use no-cors to avoid preflight issues with typical webhooks
+                body: JSON.stringify({
+                    event: 'quiz_completed',
+                    quiz_title: quizData.title,
+                    lead: {
+                        ...result,
+                        id: leadData?.id
+                    }
+                })
+            }).catch(e => console.error('Webhook failed:', e));
+        } catch (e) {
+            console.error('Webhook error:', e);
+        }
+    }
 
     return { error };
+};
+
+export const getLeads = async (quizId: string) => {
+    const { data, error } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('quiz_id', quizId)
+        .order('completed_at', { ascending: false });
+
+    if (error) {
+        console.error('Error fetching leads:', error);
+        return [];
+    }
+
+    return data;
 };
 
 export const getStats = async (quizId: string): Promise<QuizStats> => {
