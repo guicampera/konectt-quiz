@@ -157,33 +157,53 @@ export const getLeads = async (quizId: string) => {
     return data;
 };
 
-export const getStats = async (quizId: string): Promise<QuizStats> => {
+export const getStats = async (quizId: string, startDate?: Date, endDate?: Date): Promise<QuizStats> => {
     // 1. Get Total Views
-    const { count: totalViews } = await supabase
+    let viewsQuery = supabase
         .from('quiz_events')
         .select('*', { count: 'exact', head: true })
         .eq('quiz_id', quizId)
         .eq('event_type', 'view');
 
+    if (startDate) viewsQuery = viewsQuery.gte('created_at', startDate.toISOString());
+    if (endDate) viewsQuery = viewsQuery.lte('created_at', endDate.toISOString());
+
+    const { count: totalViews } = await viewsQuery;
+
     // 2. Get Total Conversions (Redirects reached)
-    const { count: totalConversions } = await supabase
+    let conversionQuery = supabase
         .from('quiz_events')
         .select('*', { count: 'exact', head: true })
         .eq('quiz_id', quizId)
         .eq('event_type', 'conversion');
 
+    if (startDate) conversionQuery = conversionQuery.gte('created_at', startDate.toISOString());
+    if (endDate) conversionQuery = conversionQuery.lte('created_at', endDate.toISOString());
+
+    const { count: totalConversions } = await conversionQuery;
+
     // 3. Get Total Leads (Form submissions)
-    const { count: totalLeads } = await supabase
+    let leadsQuery = supabase
         .from('leads')
         .select('*', { count: 'exact', head: true })
         .eq('quiz_id', quizId);
 
+    if (startDate) leadsQuery = leadsQuery.gte('completed_at', startDate.toISOString());
+    if (endDate) leadsQuery = leadsQuery.lte('completed_at', endDate.toISOString());
+
+    const { count: totalLeads } = await leadsQuery;
+
     // 4. Get Funnel Data
-    const { data: events } = await supabase
+    let funnelQuery = supabase
         .from('quiz_events')
         .select('event_type, question_id')
         .eq('quiz_id', quizId)
         .in('event_type', ['step_view', 'step_answer']);
+
+    if (startDate) funnelQuery = funnelQuery.gte('created_at', startDate.toISOString());
+    if (endDate) funnelQuery = funnelQuery.lte('created_at', endDate.toISOString());
+
+    const { data: events } = await funnelQuery;
 
     // 5. Group events by question_id
     const funnelMap: Record<string, { views: number; completed: number }> = {};

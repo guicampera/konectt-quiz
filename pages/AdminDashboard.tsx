@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { getQuizzes, getStats, deleteQuiz, saveQuiz, getLeads } from '../services/storage';
 import { supabase } from '../services/auth';
 import { Quiz, QuestionType } from '../types';
-import { Plus, BarChart2, Edit2, Trash2, ExternalLink, Play, Copy, LogOut, Zap, Users, Activity, Filter, ArrowDown, Download, Link as LinkIcon, Check } from 'lucide-react';
+import { Plus, BarChart2, Edit2, Trash2, ExternalLink, Play, Copy, LogOut, Zap, Users, Activity, Filter, ArrowDown, Download, Link as LinkIcon, Check, Calendar } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, AreaChart, Area, Cell } from 'recharts';
 import { motion } from 'framer-motion';
 
@@ -20,14 +20,40 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onEdit, onPrevie
   const [userEmail, setUserEmail] = React.useState('');
   const [selectedQuizId, setSelectedQuizId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState<'today' | 'yesterday' | '7days' | 'all'>('all');
+
+  const getDateRange = () => {
+    const now = new Date();
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+
+    if (dateRange === 'today') {
+      return { start, end: now };
+    }
+    if (dateRange === 'yesterday') {
+      const yesterdayStart = new Date(start);
+      yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+      const yesterdayEnd = new Date(start);
+      yesterdayEnd.setMilliseconds(-1);
+      return { start: yesterdayStart, end: yesterdayEnd };
+    }
+    if (dateRange === '7days') {
+      const sevenDaysAgo = new Date(start);
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      return { start: sevenDaysAgo, end: now };
+    }
+    return { start: undefined, end: undefined };
+  };
 
   React.useEffect(() => {
     const loadData = async () => {
       const data = await getQuizzes();
       setQuizzes(data);
 
-      // Fetch stats for all quizzes in parallel
-      const statsArray = await Promise.all(data.map(q => getStats(q.id)));
+      const { start, end } = getDateRange();
+
+      // Fetch stats for all quizzes in parallel with date filtering
+      const statsArray = await Promise.all(data.map(q => getStats(q.id, start, end)));
       const stats: Record<string, any> = {};
       data.forEach((q, i) => {
         stats[q.id] = statsArray[i];
@@ -38,7 +64,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onEdit, onPrevie
       if (user) setUserEmail(user.email || '');
     };
     loadData();
-  }, [trigger]);
+  }, [trigger, dateRange]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -204,17 +230,38 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onEdit, onPrevie
 
       <div className="p-6 md:p-8 max-w-7xl mx-auto">
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
           <div>
             <h1 className="text-3xl font-bold text-white mb-1">Visão Geral</h1>
             <p className="text-slate-400">Gerencie seus funis e monitore performance em tempo real.</p>
           </div>
-          <button
-            onClick={createNewQuiz}
-            className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-lg flex items-center gap-2 shadow-lg hover:shadow-indigo-500/30 transition-all font-medium"
-          >
-            <Plus size={20} /> Criar Novo Quiz
-          </button>
+
+          <div className="flex flex-wrap items-center gap-4">
+            {/* Date Range Selector */}
+            <div className="bg-slate-900 border border-slate-800 p-1 rounded-xl flex gap-1">
+              {[
+                { id: 'today', label: 'Hoje' },
+                { id: 'yesterday', label: 'Ontem' },
+                { id: '7days', label: '7 Dias' },
+                { id: 'all', label: 'Tudo' }
+              ].map((range) => (
+                <button
+                  key={range.id}
+                  onClick={() => setDateRange(range.id as any)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${dateRange === range.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                  {range.label}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={createNewQuiz}
+              className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-lg flex items-center gap-2 shadow-lg hover:shadow-indigo-500/30 transition-all font-medium"
+            >
+              <Plus size={20} /> Criar Novo Quiz
+            </button>
+          </div>
         </div>
 
         {/* Global Metrics */}
