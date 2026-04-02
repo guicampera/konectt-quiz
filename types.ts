@@ -1,4 +1,9 @@
 
+export enum ScoringSystem {
+  CORRECT_WRONG = 'CORRECT_WRONG',
+  POINTS = 'POINTS'
+}
+
 export enum QuestionType {
   SINGLE_CHOICE = 'SINGLE_CHOICE',
   MULTI_CHOICE = 'MULTI_CHOICE',
@@ -80,6 +85,7 @@ export interface Quiz {
   redirectUrl: string;
   webhookUrl?: string;
   showScore: boolean;
+  scoringSystem: ScoringSystem;
   outcomes?: QuizOutcome[];
   active: boolean;
   createdAt: string;

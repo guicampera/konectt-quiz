@@ -3,9 +3,13 @@ import { supabase } from './auth';
 import { Quiz, QuizResult, QuizStats } from '../types';
 
 export const getQuizzes = async (): Promise<Quiz[]> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
     const { data, error } = await supabase
         .from('quizzes')
         .select('*')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
     if (error) {
@@ -27,6 +31,7 @@ export const getQuizzes = async (): Promise<Quiz[]> => {
         showScore: q.show_score,
         outcomes: q.outcomes,
         active: q.active,
+        scoringSystem: q.scoring_system || 'CORRECT_WRONG',
         createdAt: q.created_at
     }));
 };
@@ -56,6 +61,7 @@ export const getQuizBySlug = async (slug: string): Promise<Quiz | null> => {
         showScore: data.show_score,
         outcomes: data.outcomes,
         active: data.active,
+        scoringSystem: data.scoring_system || 'CORRECT_WRONG',
         createdAt: data.created_at
     };
 };
@@ -76,6 +82,7 @@ export const saveQuiz = async (quiz: Quiz): Promise<{ error: any }> => {
         redirect_url: quiz.redirectUrl,
         webhook_url: quiz.webhookUrl,
         show_score: quiz.showScore,
+        scoring_system: quiz.scoringSystem,
         outcomes: quiz.outcomes,
         active: quiz.active
     };

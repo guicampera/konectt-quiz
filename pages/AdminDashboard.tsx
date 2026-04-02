@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { getQuizzes, getStats, deleteQuiz, saveQuiz, getLeads, resetQuizStats } from '../services/storage';
 import { supabase } from '../services/auth';
-import { Quiz, QuestionType } from '../types';
+import { Quiz, QuestionType, ScoringSystem } from '../types';
 import { Plus, BarChart2, Edit2, Trash2, ExternalLink, Play, Copy, LogOut, Zap, Users, Activity, Filter, ArrowDown, Download, Link as LinkIcon, Check, Calendar, RefreshCcw } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, AreaChart, Area, Cell } from 'recharts';
 import { motion } from 'framer-motion';
@@ -158,6 +158,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onEdit, onPrevie
       createdAt: new Date().toISOString(),
       redirectUrl: '',
       showScore: true,
+      scoringSystem: ScoringSystem.CORRECT_WRONG,
       theme: {
         primaryColor: '#6366f1',
         backgroundColor: '#0f172a',

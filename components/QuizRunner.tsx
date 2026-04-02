@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Quiz, Question, QuestionType } from '../types';
+import { Quiz, Question, QuestionType, ScoringSystem } from '../types';
 import { Trophy, CheckCircle, XCircle, ArrowRight, Check, ChevronRight, HelpCircle } from 'lucide-react';
 import { saveResult } from '../services/storage';
 import { trackQuestionAnswer, trackQuestionView, trackQuizView, trackConversion, trackQuizDuration } from '../services/storage';
@@ -207,7 +207,18 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
 
     const updatedAnswers = { ...answers };
     if (val !== null) {
-      updatedAnswers[currentQuestion.id] = val;
+      // Store the specific value for the answer
+      if (currentQuestion.type === QuestionType.SINGLE_CHOICE && typeof val === 'object') {
+        updatedAnswers[currentQuestion.id] = val.value;
+      } else if (currentQuestion.type === QuestionType.MULTI_CHOICE && Array.isArray(val)) {
+        // Sum values for multi-choice
+        const sum = currentQuestion.options
+          ?.filter(o => val.includes(o.id))
+          .reduce((acc, o) => acc + (o.value || 0), 0) || 0;
+        updatedAnswers[currentQuestion.id] = sum;
+      } else {
+        updatedAnswers[currentQuestion.id] = val;
+      }
       setAnswers(updatedAnswers);
     }
 
@@ -225,8 +236,21 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
     if (quiz.active) {
       trackConversion(quiz.id); // Track conversion when reaching the end/redirect
     }
-    const score = Object.values(finalAnswers).reduce((acc: number, val: any) =>
+    const totalPoints = Object.values(finalAnswers).reduce((acc: number, val: any) =>
       typeof val === 'number' ? acc + val : acc, 0);
+
+    // Calculate Max Possible Points for percentage if in POINTS mode
+    const maxPossiblePoints = quiz.questions.reduce((acc, q) => {
+      if (q.type === QuestionType.SINGLE_CHOICE) {
+        const maxOpt = Math.max(...(q.options?.map(o => o.value) || [0]));
+        return acc + maxOpt;
+      }
+      if (q.type === QuestionType.MULTI_CHOICE) {
+        const sumScale = q.options?.reduce((sum, o) => sum + (o.value || 0), 0) || 0;
+        return acc + sumScale;
+      }
+      return acc;
+    }, 0);
 
     // Count total questions that had a "Correct" answer defined
     const totalScorableQuestions = quiz.questions.filter(q =>
@@ -234,13 +258,17 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
       q.options?.some(o => o.isCorrect)
     ).length;
 
+    const scorePercent = quiz.scoringSystem === ScoringSystem.POINTS
+      ? (maxPossiblePoints > 0 ? Math.round((totalPoints / maxPossiblePoints) * 100) : 0)
+      : (totalScorableQuestions > 0 ? Math.round((correctAnswersCount / totalScorableQuestions) * 100) : 0);
+
     const durationSeconds = Math.round((Date.now() - startTime.current) / 1000);
 
     if (quiz.active) {
       await saveResult({
         quizId: quiz.id,
         answers: finalAnswers,
-        score,
+        score: quiz.scoringSystem === ScoringSystem.POINTS ? totalPoints : correctAnswersCount,
         totalCorrect: correctAnswersCount,
         totalQuestions: totalScorableQuestions,
         durationSeconds,
@@ -249,7 +277,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
     }
 
     trackEvent('Lead', {
-      value: score,
+      value: totalPoints,
       currency: 'BRL',
       content_name: quiz.title
     });
@@ -259,16 +287,13 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
     let finalOutcome = null;
 
     if (quiz.outcomes && quiz.outcomes.length > 0) {
-      // Calculate percentage
-      const scorePercent = totalScorableQuestions > 0 ? Math.round((correctAnswersCount / totalScorableQuestions) * 100) : 0;
-
       // Sort by minPercentage descending to find the highest match
       const sorted = [...quiz.outcomes].sort((a, b) => b.minPercentage - a.minPercentage);
       finalOutcome = sorted.find(o => scorePercent >= o.minPercentage) || sorted[sorted.length - 1];
       if (finalOutcome.redirectUrl) finalRedirect = finalOutcome.redirectUrl;
     }
 
-    const delay = totalScorableQuestions > 0 ? 8000 : 4000;
+    const delay = quiz.scoringSystem === ScoringSystem.POINTS ? 4000 : (totalScorableQuestions > 0 ? 8000 : 4000);
 
     setTimeout(() => {
       if (finalRedirect) window.location.href = finalRedirect;
@@ -283,11 +308,24 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
   };
 
   if (isFinished) {
-    // State for final screen display
+    // Calculate final metrics for display
     const totalScorable = quiz.questions.filter(q =>
-      q.options?.some(o => o.isCorrect)
+      (q.type === QuestionType.SINGLE_CHOICE || q.type === QuestionType.MULTI_CHOICE) &&
+      (quiz.scoringSystem === ScoringSystem.POINTS ? true : q.options?.some(o => o.isCorrect))
     ).length;
-    const scorePercent = totalScorable > 0 ? Math.round((correctAnswersCount / totalScorable) * 100) : 0;
+
+    const totalPoints = Object.values(answers).reduce((acc: number, val: any) =>
+      typeof val === 'number' ? acc + val : acc, 0);
+
+    const maxPoints = quiz.questions.reduce((acc, q) => {
+      if (q.type === QuestionType.SINGLE_CHOICE) return acc + Math.max(...(q.options?.map(o => o.value) || [0]));
+      if (q.type === QuestionType.MULTI_CHOICE) return acc + (q.options?.reduce((sum, o) => sum + (o.value || 0), 0) || 0);
+      return acc;
+    }, 0);
+
+    const scorePercent = quiz.scoringSystem === ScoringSystem.POINTS
+      ? (maxPoints > 0 ? Math.round((totalPoints / maxPoints) * 100) : 0)
+      : (totalScorable > 0 ? Math.round((correctAnswersCount / totalScorable) * 100) : 0);
 
     const sorted = [...(quiz.outcomes || [])].sort((a, b) => b.minPercentage - a.minPercentage);
     const matchedOutcome = sorted.find(o => scorePercent >= o.minPercentage) || sorted[sorted.length - 1];
@@ -317,13 +355,24 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
             />
           )}
 
-          {quiz.showScore !== false && totalScorable > 0 && (
+          {quiz.showScore !== false && (
             <div className="bg-white/5 border border-white/10 rounded-2xl p-6 mb-8 backdrop-blur-md inline-flex flex-col items-center">
-              <p className="text-[10px] uppercase tracking-widest opacity-50 mb-2">Seu Desempenho</p>
+              <p className="text-[10px] uppercase tracking-widest opacity-50 mb-2">
+                {quiz.scoringSystem === ScoringSystem.POINTS ? 'Pontuação Total' : 'Seu Desempenho'}
+              </p>
               <div className="text-5xl font-black mb-1 flex items-center gap-2">
-                <span className="text-indigo-400">{scorePercent}%</span>
+                <span className="text-indigo-400">
+                  {quiz.scoringSystem === ScoringSystem.POINTS ? totalPoints : `${scorePercent}%`}
+                </span>
+                {quiz.scoringSystem === ScoringSystem.POINTS && (
+                  <span className="text-xl opacity-30">pts</span>
+                )}
               </div>
-              <p className="text-xs opacity-40">{correctAnswersCount} de {totalScorable} acertos</p>
+              <p className="text-xs opacity-40">
+                {quiz.scoringSystem === ScoringSystem.POINTS
+                  ? `De um máximo de ${maxPoints} pontos`
+                  : `${correctAnswersCount} de ${totalScorable} acertos`}
+              </p>
             </div>
           )}
 

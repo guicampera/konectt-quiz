@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
-import { Quiz, Question, QuestionType, AnswerOption, FormField } from '../types';
+import { Quiz, Question, QuestionType, AnswerOption, FormField, ScoringSystem } from '../types';
 import { saveQuiz } from '../services/storage';
-import { ChevronLeft, Save, Plus, Trash, Settings, Image as ImageIcon, Video, Type, List, Monitor, FormInput, Palette, CheckSquare, CheckCircle2, ArrowUp, ArrowDown } from 'lucide-react';
+import { ChevronLeft, Save, Plus, Trash, Settings, Image as ImageIcon, Video, Type, List, Monitor, FormInput, Palette, CheckSquare, CheckCircle2, ArrowUp, ArrowDown, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { ImageUpload } from '../components/ImageUpload';
 
@@ -209,27 +209,35 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({ quiz: initialQuiz, onB
                               updateQuestion(q.id, { options: newOpts });
                             }} placeholder="Texto da opção" />
 
-                            <input type="number" className="w-16 bg-slate-900 border-slate-800 rounded-lg text-sm p-2" value={opt.value} onChange={(e) => {
-                              const newOpts = [...(q.options || [])];
-                              newOpts[oi].value = parseInt(e.target.value);
-                              updateQuestion(q.id, { options: newOpts });
-                            }} placeholder="Pts" title="Pontos" />
-
-                            <button
-                              onClick={() => {
-                                const newOpts = [...(q.options || [])];
-                                if (q.type === QuestionType.SINGLE_CHOICE) {
-                                  newOpts.forEach(o => o.isCorrect = false);
-                                  newOpts[oi].isCorrect = true;
-                                } else {
-                                  newOpts[oi].isCorrect = !newOpts[oi].isCorrect;
-                                }
-                                updateQuestion(q.id, { options: newOpts });
-                              }}
-                              className={`p-2 rounded-lg transition-colors ${opt.isCorrect ? 'bg-green-500/20 text-green-500' : 'text-slate-600 hover:bg-slate-900'}`}
-                            >
-                              <CheckCircle2 size={18} />
-                            </button>
+                            {quiz.scoringSystem === ScoringSystem.POINTS ? (
+                              <div className="flex items-center gap-2 bg-slate-900 px-2 rounded-lg border border-slate-800">
+                                <span className="text-[10px] font-black text-indigo-500">PTS</span>
+                                <input type="number" className="w-12 bg-transparent border-none text-sm p-1 focus:ring-0 text-white font-bold" value={opt.value} onChange={(e) => {
+                                  const newOpts = [...(q.options || [])];
+                                  newOpts[oi].value = parseInt(e.target.value) || 0;
+                                  updateQuestion(q.id, { options: newOpts });
+                                }} />
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  const newOpts = [...(q.options || [])];
+                                  if (q.type === QuestionType.SINGLE_CHOICE) {
+                                    newOpts.forEach(o => o.isCorrect = false);
+                                    newOpts[oi].isCorrect = true;
+                                    newOpts[oi].value = 1; // Default 1 point for correct
+                                  } else {
+                                    newOpts[oi].isCorrect = !newOpts[oi].isCorrect;
+                                    newOpts[oi].value = newOpts[oi].isCorrect ? 1 : 0;
+                                  }
+                                  updateQuestion(q.id, { options: newOpts });
+                                }}
+                                className={`p-2 rounded-lg transition-colors flex items-center gap-2 ${opt.isCorrect ? 'bg-green-500/20 text-green-500' : 'text-slate-600 hover:bg-slate-900'}`}
+                              >
+                                <span className="text-[8px] font-black uppercase">{opt.isCorrect ? 'Correta' : 'Incorreta'}</span>
+                                <CheckCircle2 size={18} />
+                              </button>
+                            )}
 
                             <button onClick={() => updateQuestion(q.id, { options: q.options?.filter(o => o.id !== opt.id) })} className="p-2 text-slate-600 hover:text-red-500"><Trash size={16} /></button>
                           </div>
@@ -422,6 +430,35 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({ quiz: initialQuiz, onB
                     >
                       <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${quiz.showScore ? 'right-1' : 'left-1'}`} />
                     </button>
+                  </div>
+
+                  <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 space-y-4">
+                    <div>
+                      <h4 className="text-sm font-bold mb-1">Sistema de Pontuação</h4>
+                      <p className="text-[10px] text-slate-500 mb-4">Escolha como o resultado final será calculado.</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => setQuiz({ ...quiz, scoringSystem: ScoringSystem.CORRECT_WRONG })}
+                        className={`p-4 rounded-xl border-2 text-left transition-all ${quiz.scoringSystem === ScoringSystem.CORRECT_WRONG ? 'border-indigo-600 bg-indigo-600/10' : 'border-slate-800 hover:border-slate-700'}`}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <CheckCircle2 size={16} className={quiz.scoringSystem === ScoringSystem.CORRECT_WRONG ? 'text-indigo-500' : 'text-slate-500'} />
+                          <span className="font-bold text-xs">Certo/Errado</span>
+                        </div>
+                        <p className="text-[10px] opacity-50">Pontuação baseada no número de respostas corretas.</p>
+                      </button>
+                      <button
+                        onClick={() => setQuiz({ ...quiz, scoringSystem: ScoringSystem.POINTS })}
+                        className={`p-4 rounded-xl border-2 text-left transition-all ${quiz.scoringSystem === ScoringSystem.POINTS ? 'border-indigo-600 bg-indigo-600/10' : 'border-slate-800 hover:border-slate-700'}`}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <Zap size={16} className={quiz.scoringSystem === ScoringSystem.POINTS ? 'text-indigo-500' : 'text-slate-500'} />
+                          <span className="font-bold text-xs">Pontos Acumulados</span>
+                        </div>
+                        <p className="text-[10px] opacity-50">Cada opção tem um valor e somamos o total final.</p>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
