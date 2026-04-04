@@ -41,6 +41,8 @@ export const getQuizzes = async (): Promise<Quiz[]> => {
         showScore: q.show_score,
         outcomes: q.outcomes,
         active: q.active,
+        autoRedirectDelay: q.auto_redirect_delay,
+        sections: q.sections || [],
         scoringSystem: q.scoring_system || 'CORRECT_WRONG',
         createdAt: q.created_at
     }));
@@ -72,6 +74,8 @@ export const getQuizBySlug = async (slug: string): Promise<Quiz | null> => {
         showScore: data.show_score,
         outcomes: data.outcomes,
         active: data.active,
+        autoRedirectDelay: data.auto_redirect_delay,
+        sections: data.sections || [],
         scoringSystem: data.scoring_system || 'CORRECT_WRONG',
         createdAt: data.created_at
     };
@@ -95,7 +99,9 @@ export const saveQuiz = async (quiz: Quiz): Promise<{ error: any }> => {
         show_score: quiz.showScore,
         scoring_system: quiz.scoringSystem,
         outcomes: quiz.outcomes,
-        active: quiz.active
+        active: quiz.active,
+        auto_redirect_delay: quiz.autoRedirectDelay,
+        sections: quiz.sections || []
     };
 
     const { error } = await supabase

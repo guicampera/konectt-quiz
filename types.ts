@@ -64,9 +64,17 @@ export interface TrackingConfig {
   googleAnalyticsId?: string;
 }
 
+export interface OutcomeSection {
+  id: string;
+  type: 'text' | 'image' | 'video' | 'features';
+  title?: string;
+  content?: string;
+  mediaUrl?: string;
+}
+
 export interface QuizOutcome {
   id: string;
-  minPercentage: number; // Agora baseado em porcentagem (0-100)
+  minPercentage: number;
   title: string;
   subtitle?: string;
   mediaUrl?: string;
@@ -87,7 +95,9 @@ export interface Quiz {
   webhookUrl?: string;
   showScore: boolean;
   scoringSystem: ScoringSystem;
+  autoRedirectDelay?: number; // em segundos
   outcomes?: QuizOutcome[];
+  sections?: OutcomeSection[];
   active: boolean;
   createdAt: string;
   userId?: string;

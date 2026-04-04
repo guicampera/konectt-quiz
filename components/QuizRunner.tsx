@@ -293,12 +293,16 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
       if (finalOutcome.redirectUrl) finalRedirect = finalOutcome.redirectUrl;
     }
 
-    const delay = quiz.scoringSystem === ScoringSystem.POINTS ? 4000 : (totalScorableQuestions > 0 ? 8000 : 4000);
-
-    setTimeout(() => {
-      if (finalRedirect) window.location.href = finalRedirect;
-      else onExit();
-    }, delay);
+    // Custom redirect delay
+    const customDelay = quiz.autoRedirectDelay !== undefined ? quiz.autoRedirectDelay : (quiz.scoringSystem === ScoringSystem.POINTS ? 4 : (totalScorableQuestions > 0 ? 8 : 4));
+    
+    // Only set timeout if delay > 0
+    if (customDelay > 0) {
+      setTimeout(() => {
+        if (finalRedirect) window.location.href = finalRedirect;
+        else onExit();
+      }, customDelay * 1000);
+    }
   };
 
   const containerVariants = {
@@ -393,12 +397,76 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
             </motion.a>
           )}
 
-          <div className="space-y-4">
-            <p className="opacity-50 text-sm italic">Redirecionando em instantes...</p>
-            <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-              <motion.div className="h-full bg-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.5)]" initial={{ width: 0 }} animate={{ width: '100%' }} transition={{ duration: totalScorable > 0 ? 8 : 4 }} />
+          {/* Sales Page Sections (Global) */}
+          {quiz.sections && quiz.sections.length > 0 && (
+            <div className="w-full mt-10 space-y-12 text-left animate-in fade-in slide-in-from-bottom-5 duration-700 pb-10">
+              {quiz.sections.map((section, idx) => (
+                <div key={section.id || idx} className="space-y-4">
+                  {section.title && (
+                    <h3 className="text-2xl md:text-3xl font-black mb-4 tracking-tight leading-normal">
+                      {section.title}
+                    </h3>
+                  )}
+                  
+                  {section.type === 'text' && section.content && (
+                    <div 
+                      className="prose prose-invert max-w-none text-base opacity-90 leading-relaxed"
+                      dangerouslySetInnerHTML={{ __html: section.content }}
+                    />
+                  )}
+
+                  {section.type === 'image' && section.mediaUrl && (
+                    <div className="rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
+                      <img src={section.mediaUrl} alt={section.title || ''} className="w-full h-auto" />
+                    </div>
+                  )}
+
+                  {section.type === 'video' && section.mediaUrl && (
+                    <div className="aspect-video rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-black">
+                      <iframe 
+                        src={section.mediaUrl.includes('youtube.com') || section.mediaUrl.includes('youtu.be') 
+                          ? section.mediaUrl.replace('watch?v=', 'embed/').split('&')[0] 
+                          : section.mediaUrl} 
+                        className="w-full h-full" 
+                        allowFullScreen 
+                      />
+                    </div>
+                  )}
+
+                  {section.type === 'features' && section.content && (
+                    <div className="grid grid-cols-1 gap-3">
+                      {section.content.split('\n').filter(line => line.trim()).map((feature, fi) => (
+                        <div key={fi} className="flex gap-4 p-4 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm">
+                          <div className="shrink-0 w-6 h-6 rounded-full bg-green-500/20 text-green-500 flex items-center justify-center">
+                            <CheckCircle size={14} />
+                          </div>
+                          <span className="text-sm font-medium opacity-90">{feature}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
-          </div>
+          )}
+
+          {/* Redirection indicator only if autoRedirectDelay > 0 */}
+          {(quiz.autoRedirectDelay === undefined || quiz.autoRedirectDelay > 0) && (
+            <div className="space-y-4 mt-8">
+              <p className="opacity-50 text-sm italic">Redirecionando em instantes...</p>
+              <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                <motion.div 
+                  className="h-full bg-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.5)]" 
+                  initial={{ width: 0 }} 
+                  animate={{ width: '100%' }} 
+                  transition={{ 
+                    duration: quiz.autoRedirectDelay !== undefined ? quiz.autoRedirectDelay : (quiz.scoringSystem === ScoringSystem.POINTS ? 4 : (totalScorable > 0 ? 8 : 4)),
+                    ease: "linear"
+                  }} 
+                />
+              </div>
+            </div>
+          )}
         </motion.div>
       </div>
     );

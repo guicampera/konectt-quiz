@@ -455,6 +455,17 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({ quiz: initialQuiz, onB
                     />
                     <p className="text-[10px] text-slate-500 mt-2">Enviaremos os dados do lead via POST JSON assim que o quiz for concluído.</p>
                   </div>
+                  <div>
+                    <label className="block text-xs font-bold uppercase opacity-50 mb-2">Tempo de Redirecionamento Automático (Segundos)</label>
+                    <input 
+                      type="number"
+                      value={quiz.autoRedirectDelay ?? 8} 
+                      onChange={(e) => setQuiz({ ...quiz, autoRedirectDelay: parseInt(e.target.value) || 0 })} 
+                      className="w-full bg-slate-950 border-slate-800 rounded-xl p-4 focus:ring-2 focus:ring-indigo-600" 
+                      placeholder="Padrão: 8 segundos. Use 0 para desativar." 
+                    />
+                    <p className="text-[10px] text-slate-500 mt-2">Após este tempo, o usuário será levado para a URL de sucesso. Deixe 0 ou um valor alto se quiser que ele leia a página de vendas.</p>
+                  </div>
 
                   <div className="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800">
                     <div>
@@ -498,112 +509,225 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({ quiz: initialQuiz, onB
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div>
-                <h3 className="text-xl font-bold mb-6 text-indigo-400">Resultados por Desempenho (%)</h3>
-                <p className="text-xs text-slate-500 mb-6 italic">Configure o que o usuário verá baseado no % de acertos. O sistema escolherá o resultado mais próximo do seu desempenho.</p>
+                <div className="h-px bg-slate-800/50" />
 
-                <div className="space-y-8">
-                  {[
-                    { label: 'Tier Bronze (0% - 40%)', defaultMin: 0 },
-                    { label: 'Tier Prata (41% - 70%)', defaultMin: 41 },
-                    { label: 'Tier Ouro (71% - 100%)', defaultMin: 71 }
-                  ].map((tier, i) => {
-                    const outcome = (quiz.outcomes || [])[i] || { id: crypto.randomUUID(), minPercentage: tier.defaultMin, title: '', buttonText: '', redirectUrl: '' };
-                    return (
-                      <div key={i} className="bg-slate-950 p-6 rounded-3xl border border-slate-800 space-y-5">
-                        <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-                          <span className="text-xs font-black uppercase text-indigo-500 tracking-tighter">{tier.label}</span>
-                          <div className="flex items-center gap-2">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase">Min %:</label>
-                            <input
-                              type="number"
-                              className="w-16 bg-slate-900 border-slate-700 rounded-lg text-xs p-1.5 focus:ring-1 focus:ring-indigo-500"
-                              value={outcome.minPercentage}
-                              onChange={(e) => {
-                                const newOutcomes = [...(quiz.outcomes || [{}, {}, {}])];
-                                newOutcomes[i] = { ...outcome, minPercentage: parseInt(e.target.value) };
-                                setQuiz({ ...quiz, outcomes: newOutcomes as any });
-                              }}
-                            />
-                          </div>
+                {/* Global Sales Page Editor */}
+                <div>
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-xl font-bold text-indigo-400">Página de Vendas Global</h3>
+                    <button 
+                      onClick={() => {
+                        const sections = [...(quiz.sections || [])];
+                        sections.push({ id: crypto.randomUUID(), type: 'text', title: '', content: '' });
+                        setQuiz({ ...quiz, sections });
+                      }}
+                      className="text-[10px] bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/30 px-3 py-1.5 rounded-full font-black flex items-center gap-1 transition-all"
+                    >
+                      <Plus size={10} /> ADD BLOCO GLOBAL
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-500 mb-6 italic">Estes blocos aparecerão para TODOS os usuários no final, independente do resultado.</p>
+                  
+                  <div className="space-y-4">
+                    {(quiz.sections || []).map((sec, si) => (
+                      <div key={sec.id} className="bg-slate-950 p-5 rounded-3xl border border-slate-800 space-y-4">
+                        <div className="flex justify-between gap-2">
+                          <select 
+                            className="bg-slate-900 border-slate-700 rounded-lg text-[10px] font-bold p-1 pr-6"
+                            value={sec.type}
+                            onChange={(e) => {
+                              const sections = [...(quiz.sections || [])];
+                              sections[si] = { ...sec, type: e.target.value as any };
+                              setQuiz({ ...quiz, sections });
+                            }}
+                          >
+                            <option value="text">Texto Rico</option>
+                            <option value="image">Imagem</option>
+                            <option value="video">Vídeo</option>
+                            <option value="features">Destaques</option>
+                          </select>
+                          <button 
+                            onClick={() => {
+                              const sections = (quiz.sections || []).filter(s => s.id !== sec.id);
+                              setQuiz({ ...quiz, sections });
+                            }}
+                            className="text-slate-600 hover:text-red-500"
+                          >
+                            <Trash size={14} />
+                          </button>
                         </div>
+                        <input 
+                          className="w-full bg-slate-900 border-slate-800 rounded-xl text-xs p-3 font-bold"
+                          placeholder="Título do Bloco"
+                          value={sec.title || ''}
+                          onChange={(e) => {
+                            const sections = [...(quiz.sections || [])];
+                            sections[si] = { ...sec, title: e.target.value };
+                            setQuiz({ ...quiz, sections });
+                          }}
+                        />
+                        {sec.type === 'text' && (
+                          <textarea 
+                            className="w-full bg-slate-900 border-slate-800 rounded-xl text-xs p-3 h-24"
+                            placeholder="Texto ou HTML..."
+                            value={sec.content || ''}
+                            onChange={(e) => {
+                              const sections = [...(quiz.sections || [])];
+                              sections[si] = { ...sec, content: e.target.value };
+                              setQuiz({ ...quiz, sections });
+                            }}
+                          />
+                        )}
+                        {sec.type === 'image' && (
+                          <ImageUpload
+                            label="Subir Imagem para o Bloco"
+                            value={sec.mediaUrl}
+                            onChange={(val) => {
+                              const sections = [...(quiz.sections || [])];
+                              sections[si] = { ...sec, mediaUrl: val };
+                              setQuiz({ ...quiz, sections });
+                            }}
+                          />
+                        )}
+                        {sec.type === 'video' && (
+                          <input 
+                            className="w-full bg-slate-900 border-slate-800 rounded-xl text-xs p-3 font-mono"
+                            placeholder="URL do Vídeo (YouTube/Embed)"
+                            value={sec.mediaUrl || ''}
+                            onChange={(e) => {
+                              const sections = [...(quiz.sections || [])];
+                              sections[si] = { ...sec, mediaUrl: e.target.value };
+                              setQuiz({ ...quiz, sections });
+                            }}
+                          />
+                        )}
+                        {sec.type === 'features' && (
+                          <textarea 
+                            className="w-full bg-slate-900 border-slate-800 rounded-xl text-[10px] p-3 h-20"
+                            placeholder="Destaques (um por linha)..."
+                            value={sec.content || ''}
+                            onChange={(e) => {
+                              const sections = [...(quiz.sections || [])];
+                              sections[si] = { ...sec, content: e.target.value };
+                              setQuiz({ ...quiz, sections });
+                            }}
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-4">
-                            <input
-                              className="w-full bg-slate-900 border-slate-800 rounded-xl text-sm p-3 font-bold"
-                              placeholder="Título Chamativo"
-                              value={outcome.title || ''}
-                              onChange={(e) => {
-                                const newOutcomes = [...(quiz.outcomes || [{}, {}, {}])];
-                                newOutcomes[i] = { ...outcome, title: e.target.value };
-                                setQuiz({ ...quiz, outcomes: newOutcomes as any });
-                              }}
-                            />
-                            <textarea
-                              className="w-full bg-slate-900 border-slate-800 rounded-xl text-xs p-3 h-24 outline-none focus:ring-1 focus:ring-indigo-500"
-                              placeholder="Conteúdo extra / HTML (aparece abaixo do vídeo/imagem)"
-                              value={outcome.contentBody || ''}
-                              onChange={(e) => {
-                                const newOutcomes = [...(quiz.outcomes || [{}, {}, {}])];
-                                newOutcomes[i] = { ...outcome, contentBody: e.target.value };
-                                setQuiz({ ...quiz, outcomes: newOutcomes as any });
-                              }}
-                            />
-                          </div>
-                          <div className="space-y-4">
-                            <ImageUpload
-                              label="Imagem do Resultado"
-                              value={outcome.mediaUrl}
-                              onChange={(val) => {
-                                const newOutcomes = [...(quiz.outcomes || [{}, {}, {}])];
-                                newOutcomes[i] = { ...outcome, mediaUrl: val };
-                                setQuiz({ ...quiz, outcomes: newOutcomes as any });
-                              }}
-                            />
-                            <div className="grid grid-cols-2 gap-2">
+                <div className="h-px bg-slate-800/50" />
+
+                <div>
+                  <h3 className="text-xl font-bold mb-6 text-indigo-400">Resultados por Desempenho (%)</h3>
+                  <p className="text-xs text-slate-500 mb-6 italic">Configure o que o usuário verá baseado no % de acertos. O sistema escolherá o resultado mais próximo do seu desempenho.</p>
+
+                  <div className="space-y-8">
+                    {[
+                      { label: 'Tier Bronze (0% - 40%)', defaultMin: 0 },
+                      { label: 'Tier Prata (41% - 70%)', defaultMin: 41 },
+                      { label: 'Tier Ouro (71% - 100%)', defaultMin: 71 }
+                    ].map((tier, i) => {
+                      const outcome = (quiz.outcomes || [])[i] || { id: crypto.randomUUID(), minPercentage: tier.defaultMin, title: '', buttonText: '', redirectUrl: '' };
+                      return (
+                        <div key={i} className="bg-slate-950 p-6 rounded-3xl border border-slate-800 space-y-5">
+                          <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                            <span className="text-xs font-black uppercase text-indigo-500 tracking-tighter">{tier.label}</span>
+                            <div className="flex items-center gap-2">
+                              <label className="text-[10px] font-bold text-slate-500 uppercase">Min %:</label>
                               <input
-                                className="bg-slate-900 border-slate-800 rounded-xl text-xs p-3"
-                                placeholder="Texto Botão"
-                                value={outcome.buttonText || ''}
+                                type="number"
+                                className="w-16 bg-slate-900 border-slate-700 rounded-lg text-xs p-1.5 focus:ring-1 focus:ring-indigo-500"
+                                value={outcome.minPercentage}
                                 onChange={(e) => {
                                   const newOutcomes = [...(quiz.outcomes || [{}, {}, {}])];
-                                  newOutcomes[i] = { ...outcome, buttonText: e.target.value };
-                                  setQuiz({ ...quiz, outcomes: newOutcomes as any });
-                                }}
-                              />
-                              <input
-                                className="bg-slate-900 border-slate-800 rounded-xl text-xs p-3 font-mono"
-                                placeholder="URL Destino"
-                                value={outcome.redirectUrl || ''}
-                                onChange={(e) => {
-                                  const newOutcomes = [...(quiz.outcomes || [{}, {}, {}])];
-                                  newOutcomes[i] = { ...outcome, redirectUrl: e.target.value };
+                                  newOutcomes[i] = { ...outcome, minPercentage: parseInt(e.target.value) };
                                   setQuiz({ ...quiz, outcomes: newOutcomes as any });
                                 }}
                               />
                             </div>
                           </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
 
-              <div>
-                <h3 className="text-xl font-bold mb-6 text-indigo-400">Pixels & Rastreio</h3>
-                <div className="space-y-4">
-                  <input value={quiz.tracking.facebookPixelId || ''} onChange={(e) => setQuiz({ ...quiz, tracking: { ...quiz.tracking, facebookPixelId: e.target.value } })} className="w-full bg-slate-950 border-slate-800 rounded-xl p-4" placeholder="Facebook Pixel ID" />
-                  <input value={quiz.tracking.googleAnalyticsId || ''} onChange={(e) => setQuiz({ ...quiz, tracking: { ...quiz.tracking, googleAnalyticsId: e.target.value } })} className="w-full bg-slate-950 border-slate-800 rounded-xl p-4" placeholder="GA4 ID (G-XXXXX)" />
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-4">
+                              <input
+                                className="w-full bg-slate-900 border-slate-800 rounded-xl text-sm p-3 font-bold"
+                                placeholder="Título Chamativo"
+                                value={outcome.title || ''}
+                                onChange={(e) => {
+                                  const newOutcomes = [...(quiz.outcomes || [{}, {}, {}])];
+                                  newOutcomes[i] = { ...outcome, title: e.target.value };
+                                  setQuiz({ ...quiz, outcomes: newOutcomes as any });
+                                }}
+                              />
+                              <textarea
+                                className="w-full bg-slate-900 border-slate-800 rounded-xl text-xs p-3 h-24 outline-none focus:ring-1 focus:ring-indigo-500"
+                                placeholder="Conteúdo extra / HTML (aparece abaixo do vídeo/imagem)"
+                                value={outcome.contentBody || ''}
+                                onChange={(e) => {
+                                  const newOutcomes = [...(quiz.outcomes || [{}, {}, {}])];
+                                  newOutcomes[i] = { ...outcome, contentBody: e.target.value };
+                                  setQuiz({ ...quiz, outcomes: newOutcomes as any });
+                                }}
+                              />
+                            </div>
+                            <div className="space-y-4">
+                              <ImageUpload
+                                label="Imagem do Resultado"
+                                value={outcome.mediaUrl}
+                                onChange={(val) => {
+                                  const newOutcomes = [...(quiz.outcomes || [{}, {}, {}])];
+                                  newOutcomes[i] = { ...outcome, mediaUrl: val };
+                                  setQuiz({ ...quiz, outcomes: newOutcomes as any });
+                                }}
+                              />
+                              <div className="grid grid-cols-2 gap-2">
+                                <input
+                                  className="bg-slate-900 border-slate-800 rounded-xl text-xs p-3"
+                                  placeholder="Texto Botão"
+                                  value={outcome.buttonText || ''}
+                                  onChange={(e) => {
+                                    const newOutcomes = [...(quiz.outcomes || [{}, {}, {}])];
+                                    newOutcomes[i] = { ...outcome, buttonText: e.target.value };
+                                    setQuiz({ ...quiz, outcomes: newOutcomes as any });
+                                  }}
+                                />
+                                <input
+                                  className="bg-slate-900 border-slate-800 rounded-xl text-xs p-3 font-mono"
+                                  placeholder="URL Destino"
+                                  value={outcome.redirectUrl || ''}
+                                  onChange={(e) => {
+                                    const newOutcomes = [...(quiz.outcomes || [{}, {}, {}])];
+                                    newOutcomes[i] = { ...outcome, redirectUrl: e.target.value };
+                                    setQuiz({ ...quiz, outcomes: newOutcomes as any });
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="h-px bg-slate-800/50" />
+
+                <div>
+                  <h3 className="text-xl font-bold mb-6 text-indigo-400">Pixels & Rastreio</h3>
+                  <div className="space-y-4">
+                    <input value={quiz.tracking.facebookPixelId || ''} onChange={(e) => setQuiz({ ...quiz, tracking: { ...quiz.tracking, facebookPixelId: e.target.value } })} className="w-full bg-slate-950 border-slate-800 rounded-xl p-4" placeholder="Facebook Pixel ID" />
+                    <input value={quiz.tracking.googleAnalyticsId || ''} onChange={(e) => setQuiz({ ...quiz, tracking: { ...quiz.tracking, googleAnalyticsId: e.target.value } })} className="w-full bg-slate-950 border-slate-800 rounded-xl p-4" placeholder="GA4 ID (G-XXXXX)" />
+                  </div>
                 </div>
               </div>
             </div>
           )
         }
-      </div >
-    </div >
+      </div>
+    </div>
   );
 };
