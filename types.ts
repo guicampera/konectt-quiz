@@ -54,6 +54,7 @@ export interface QuizTheme {
   fontFamily: string;
   backgroundImage?: string;
   logoUrl?: string;
+  logoHeight?: number;
   buttonRadius: 'none' | 'md' | 'full';
   fontSize?: 'sm' | 'base' | 'lg' | 'xl' | '2xl';
 }
@@ -89,6 +90,7 @@ export interface Quiz {
   outcomes?: QuizOutcome[];
   active: boolean;
   createdAt: string;
+  userId?: string;
 }
 
 export interface QuizResult {

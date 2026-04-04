@@ -314,6 +314,43 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({ quiz: initialQuiz, onB
                 />
               </div>
 
+              {quiz.theme.logoUrl && (
+                <div className="bg-slate-950 p-6 rounded-2xl border border-slate-800 animate-in fade-in slide-in-from-top-2 space-y-6">
+                  <div>
+                    <div className="flex justify-between items-center mb-3">
+                      <label className="text-xs font-black uppercase text-slate-500 ml-1">Altura do Logo</label>
+                      <span className="text-xs font-mono text-indigo-400 font-bold">{quiz.theme.logoHeight || 48}px</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="20"
+                      max="200"
+                      value={quiz.theme.logoHeight || 48}
+                      onChange={(e) => setQuiz({ ...quiz, theme: { ...quiz.theme, logoHeight: parseInt(e.target.value) } })}
+                      className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                    />
+                    <div className="flex justify-between mt-2 text-[8px] font-black uppercase text-slate-600">
+                      <span>Mínimo</span>
+                      <span>Padrão</span>
+                      <span>Máximo</span>
+                    </div>
+                  </div>
+
+                  {/* Live Preview Area */}
+                  <div className="pt-4 border-t border-slate-900 flex flex-col items-center">
+                    <span className="text-[8px] font-black uppercase text-slate-600 mb-4 tracking-widest">Pré-visualização do Tamanho</span>
+                    <div className="w-full bg-slate-900/50 rounded-xl p-8 flex items-center justify-center min-h-[140px] border border-dashed border-slate-800">
+                      <img
+                        src={quiz.theme.logoUrl}
+                        alt="Logo Preview"
+                        style={{ height: quiz.theme.logoHeight || 48 }}
+                        className="object-contain transition-all duration-200"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-8">
                 <div>
                   <label className="block text-xs font-black uppercase text-slate-500 mb-3 ml-1">Cor Primária</label>

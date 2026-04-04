@@ -35,9 +35,20 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({ value, onChange, label
         const ctx = canvas.getContext('2d');
         ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-        // Compress to JPEG 70% quality
-        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-        onChange(compressedBase64);
+        // Try to convert to AVIF (smallest) -> WebP (supports transparency) -> PNG (original)
+        let finalBase64 = canvas.toDataURL('image/avif', 0.6);
+        
+        if (!finalBase64.startsWith('data:image/avif')) {
+          // If AVIF is not supported for conversion, WebP is the best modern fallback with transparency
+          finalBase64 = canvas.toDataURL('image/webp', 0.8);
+          
+          if (!finalBase64.startsWith('data:image/webp')) {
+            // Absolute fallback to PNG if everything else fails
+            finalBase64 = canvas.toDataURL('image/png');
+          }
+        }
+        
+        onChange(finalBase64);
         setIsProcessing(false);
       };
     };
@@ -97,7 +108,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({ value, onChange, label
               exit={{ opacity: 0 }}
               className="relative w-full h-full min-h-[160px] bg-slate-900 flex items-center justify-center"
             >
-              <img src={value} alt="Preview" className="w-full h-full object-cover absolute inset-0" />
+              <img src={value} alt="Preview" className="w-full h-full object-contain absolute inset-0" />
               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex items-center justify-center gap-4 backdrop-blur-sm">
                 <p className="text-white text-xs font-bold uppercase tracking-widest">Alterar Imagem</p>
               </div>

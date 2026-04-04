@@ -2,15 +2,24 @@
 import { supabase } from './auth';
 import { Quiz, QuizResult, QuizStats } from '../types';
 
+export const MASTER_ADMIN_EMAIL = 'guic.campos@gmail.com';
+
 export const getQuizzes = async (): Promise<Quiz[]> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
 
-    const { data, error } = await supabase
+    const isMasterAdmin = user.email === MASTER_ADMIN_EMAIL;
+
+    let query = supabase
         .from('quizzes')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .select('*');
+
+    // If not master admin, only show own quizzes
+    if (!isMasterAdmin) {
+        query = query.eq('user_id', user.id);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) {
         console.error('Error fetching quizzes:', error);
@@ -20,6 +29,7 @@ export const getQuizzes = async (): Promise<Quiz[]> => {
     // Map database snake_case to typescript camelCase
     return data.map(q => ({
         id: q.id,
+        userId: q.user_id,
         title: q.title,
         slug: q.slug,
         description: q.description || '',
@@ -50,6 +60,7 @@ export const getQuizBySlug = async (slug: string): Promise<Quiz | null> => {
 
     return {
         id: data.id,
+        userId: data.user_id,
         title: data.title,
         slug: data.slug,
         description: data.description || '',
@@ -72,7 +83,7 @@ export const saveQuiz = async (quiz: Quiz): Promise<{ error: any }> => {
 
     const dbQuiz = {
         id: quiz.id,
-        user_id: user.id,
+        user_id: quiz.userId || user.id,
         title: quiz.title,
         slug: quiz.slug,
         description: quiz.description,

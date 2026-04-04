@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { getQuizzes, getStats, deleteQuiz, saveQuiz, getLeads, resetQuizStats } from '../services/storage';
+import { getQuizzes, getStats, deleteQuiz, saveQuiz, getLeads, resetQuizStats, MASTER_ADMIN_EMAIL } from '../services/storage';
 import { supabase } from '../services/auth';
 import { Quiz, QuestionType, ScoringSystem } from '../types';
 import { Plus, BarChart2, Edit2, Trash2, ExternalLink, Play, Copy, LogOut, Zap, Users, Activity, Filter, ArrowDown, Download, Link as LinkIcon, Check, Calendar, RefreshCcw } from 'lucide-react';
@@ -18,6 +18,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onEdit, onPrevie
   const [statsMap, setStatsMap] = React.useState<Record<string, any>>({});
   const [trigger, setTrigger] = React.useState(0);
   const [userEmail, setUserEmail] = React.useState('');
+  const [loggedUserId, setLoggedUserId] = React.useState<string | null>(null);
   const [selectedQuizId, setSelectedQuizId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<'today' | 'yesterday' | '7days' | 'all'>('all');
@@ -61,7 +62,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onEdit, onPrevie
       setStatsMap(stats);
 
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) setUserEmail(user.email || '');
+      if (user) {
+        setUserEmail(user.email || '');
+        setLoggedUserId(user.id);
+      }
     };
     loadData();
   }, [trigger, dateRange]);
@@ -231,6 +235,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onEdit, onPrevie
               <Activity className="text-white w-5 h-5" />
             </div>
             <span className="font-bold text-xl text-white tracking-tight">Konectt Quiz</span>
+            {userEmail === MASTER_ADMIN_EMAIL && (
+              <span className="ml-3 px-2 py-0.5 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-md text-[10px] font-bold uppercase">
+                Master Admin
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-6">
@@ -378,6 +387,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onEdit, onPrevie
                 animate={{ opacity: 1, scale: 1, borderColor: isSelected ? '#6366f1' : '#1e293b' }}
                 className={`bg-slate-900 rounded-2xl border overflow-hidden hover:shadow-2xl hover:shadow-black/50 transition-all duration-300 ${isSelected ? 'ring-2 ring-indigo-500 ring-offset-2 ring-offset-slate-950' : 'border-slate-800 hover:border-slate-700'}`}
               >
+                {userEmail === MASTER_ADMIN_EMAIL && quiz.userId !== loggedUserId && (
+                  <div className="bg-amber-500/10 text-amber-500 text-[9px] px-2 py-0.5 font-bold border-b border-amber-500/20 text-center uppercase tracking-widest">
+                    Quiz de outro usuário
+                  </div>
+                )}
                 <div className="p-6 border-b border-slate-800">
                   <div className="flex justify-between items-start mb-4">
                     <div>

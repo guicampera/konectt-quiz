@@ -324,8 +324,8 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
     }, 0);
 
     const scorePercent = quiz.scoringSystem === ScoringSystem.POINTS
-      ? (maxPoints > 0 ? Math.round((totalPoints / maxPoints) * 100) : 0)
-      : (totalScorable > 0 ? Math.round((correctAnswersCount / totalScorable) * 100) : 0);
+      ? (Number(maxPoints) > 0 ? Math.round((Number(totalPoints) / Number(maxPoints)) * 100) : 0)
+      : (Number(totalScorable) > 0 ? Math.round((correctAnswersCount / Number(totalScorable)) * 100) : 0);
 
     const sorted = [...(quiz.outcomes || [])].sort((a, b) => b.minPercentage - a.minPercentage);
     const matchedOutcome = sorted.find(o => scorePercent >= o.minPercentage) || sorted[sorted.length - 1];
@@ -334,8 +334,8 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
       <div className="min-h-screen flex items-center justify-center p-6 text-center relative overflow-hidden" style={{ backgroundColor: quiz.theme.backgroundColor, color: quiz.theme.textColor }}>
         <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="max-w-xl w-full relative z-10 bg-slate-900/40 backdrop-blur-xl border border-white/10 p-8 rounded-[2rem] shadow-2xl">
           {matchedOutcome?.mediaUrl ? (
-            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mb-6 rounded-2xl overflow-hidden aspect-video shadow-lg">
-              <img src={matchedOutcome.mediaUrl} className="w-full h-full object-cover" alt="Resultado" />
+            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mb-6 rounded-2xl overflow-hidden shadow-lg bg-black/10">
+              <img src={matchedOutcome.mediaUrl} className="w-full h-auto object-contain" alt="Resultado" />
             </motion.div>
           ) : (
             <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -413,9 +413,8 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
             <img
               src={quiz.theme.logoUrl}
               alt="Logo"
-              className="h-12 mx-auto mb-10 object-contain"
-              width="200"
-              height="48"
+              className="mx-auto mb-10 object-contain"
+              style={{ height: quiz.theme.logoHeight || 48 }}
               fetchpriority="high"
             />
           )}
@@ -433,17 +432,14 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mb-8 rounded-3xl overflow-hidden shadow-2xl border border-white/10 mx-auto max-w-lg"
+                className="mb-8 rounded-3xl overflow-hidden shadow-2xl border border-white/10 mx-auto max-w-lg bg-black/10"
               >
                 <img
                   src={currentQuestion.mediaUrl}
-                  className="w-full h-auto object-cover max-h-[400px]"
+                  className="w-full h-auto object-contain max-h-[500px]"
                   alt=""
                   loading={currentStep === 0 ? "eager" : "lazy"}
                   decoding="async"
-                  width="800"
-                  height="450"
-                  style={{ aspectRatio: '16/9' }}
                 />
               </motion.div>
             )}
@@ -495,8 +491,8 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
                   style={{ backgroundColor: bgColor, borderColor: borderColor }}
                 >
                   {opt.imageUrl ? (
-                    <div className={`${isGrid ? 'w-full aspect-square' : 'w-16 h-16'} shrink-0 overflow-hidden rounded-xl`}>
-                      <img src={opt.imageUrl} className="w-full h-full object-cover" />
+                    <div className={`${isGrid ? 'w-full aspect-square' : 'w-16 h-16'} shrink-0 overflow-hidden rounded-xl bg-black/10`}>
+                      <img src={opt.imageUrl} className="w-full h-full object-contain" />
                     </div>
                   ) : (
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-white/5 group-hover:bg-white/10 ${iconColor}`}>
@@ -544,8 +540,8 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
                       style={{ backgroundColor: quiz.theme.cardColor, borderColor: isSelected ? quiz.theme.primaryColor : 'transparent' }}
                     >
                       {opt.imageUrl ? (
-                        <div className={`${isGrid ? 'w-full aspect-square' : 'w-16 h-16'} shrink-0 overflow-hidden rounded-xl relative`}>
-                          <img src={opt.imageUrl} className="w-full h-full object-cover" />
+                        <div className={`${isGrid ? 'w-full aspect-square' : 'w-16 h-16'} shrink-0 overflow-hidden rounded-xl relative bg-black/10`}>
+                          <img src={opt.imageUrl} className="w-full h-full object-contain" />
                           {isSelected && (
                             <div className="absolute inset-0 flex items-center justify-center" style={{ backgroundColor: `${quiz.theme.primaryColor}66` }}>
                               <Check className="w-8 h-8 text-white" />
