@@ -376,6 +376,23 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
             </div>
           )}
 
+          {(matchedOutcome?.buttonText && (matchedOutcome.redirectUrl || quiz.redirectUrl)) && (
+            <motion.a
+              href={matchedOutcome.redirectUrl || quiz.redirectUrl}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="w-full py-5 rounded-2xl font-black text-xl shadow-2xl transition-all block text-center mb-6 no-underline hover:brightness-110 active:scale-[0.98] transform-gpu"
+              style={{ 
+                backgroundColor: quiz.theme.primaryColor, 
+                color: '#fff',
+                borderRadius: quiz.theme.buttonRadius === 'none' ? '0px' : quiz.theme.buttonRadius === 'md' ? '12px' : '999px'
+              }}
+            >
+              {matchedOutcome.buttonText}
+            </motion.a>
+          )}
+
           <div className="space-y-4">
             <p className="opacity-50 text-sm italic">Redirecionando em instantes...</p>
             <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
