@@ -7,6 +7,7 @@ import { saveResult } from '../services/storage';
 import { trackQuestionAnswer, trackQuestionView, trackQuizView, trackConversion, trackQuizDuration } from '../services/storage';
 import { trackEvent } from '../services/analytics';
 import { Popup } from './Popup';
+import { appendUTMParams } from '../services/utm';
 
 interface QuizRunnerProps {
   quiz: Quiz;
@@ -135,6 +136,23 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
       return () => { clearInterval(interval); clearTimeout(timeout); };
     }
   }, [currentStep, currentQuestion]);
+  
+  // Track UTM persistence for all links on the page (e.g. results page descriptions)
+  useEffect(() => {
+    if (isFinished) {
+      // Small delay to ensure content is rendered
+      const timer = setTimeout(() => {
+        const links = document.querySelectorAll('a');
+        links.forEach(link => {
+          const href = link.getAttribute('href');
+          if (href && !href.startsWith('#') && !href.startsWith('javascript:')) {
+            link.href = appendUTMParams(href);
+          }
+        });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isFinished]);
 
   const handleNext = (val: any) => {
     if (isProcessingAnswer) return;
@@ -299,7 +317,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
     // Only set timeout if delay > 0
     if (customDelay > 0) {
       setTimeout(() => {
-        if (finalRedirect) window.location.href = finalRedirect;
+        if (finalRedirect) window.location.href = appendUTMParams(finalRedirect);
         else onExit();
       }, customDelay * 1000);
     }
@@ -382,7 +400,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
 
           {(matchedOutcome?.buttonText && (matchedOutcome.redirectUrl || quiz.redirectUrl)) && (
             <motion.a
-              href={matchedOutcome.redirectUrl || quiz.redirectUrl}
+              href={appendUTMParams(matchedOutcome.redirectUrl || quiz.redirectUrl)}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
