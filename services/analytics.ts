@@ -27,7 +27,6 @@ export const initAnalytics = (config: TrackingConfig) => {
     }
 
     window.fbq('init', config.facebookPixelId);
-    window.fbq('track', 'PageView');
   }
 
   // Google Analytics 4

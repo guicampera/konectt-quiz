@@ -507,6 +507,19 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({ quiz: initialQuiz, onB
                         <p className="text-[10px] opacity-50">Cada opção tem um valor e somamos o total final.</p>
                       </button>
                     </div>
+
+                    <div className="flex items-center gap-2 pt-2">
+                      <input 
+                        type="checkbox"
+                        id="hideDefaultButton"
+                        className="w-4 h-4 rounded border-slate-800 bg-slate-900 text-indigo-600 focus:ring-indigo-500"
+                        checked={quiz.hideDefaultButton || false}
+                        onChange={(e) => setQuiz({ ...quiz, hideDefaultButton: e.target.checked })}
+                      />
+                      <label htmlFor="hideDefaultButton" className="text-xs font-bold text-slate-400 cursor-pointer">
+                        Esconder Botão Padrão do Resultado (CTA)
+                      </label>
+                    </div>
                   </div>
                 </div>
 
@@ -546,6 +559,8 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({ quiz: initialQuiz, onB
                             <option value="image">Imagem</option>
                             <option value="video">Vídeo</option>
                             <option value="features">Destaques</option>
+                            <option value="price">Bloco de Preço</option>
+                            <option value="button">Botão de Chamada (CTA)</option>
                           </select>
                           <button 
                             onClick={() => {
@@ -559,7 +574,7 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({ quiz: initialQuiz, onB
                         </div>
                         <input 
                           className="w-full bg-slate-900 border-slate-800 rounded-xl text-xs p-3 font-bold"
-                          placeholder="Título do Bloco"
+                          placeholder="Título do Bloco (Opcional)"
                           value={sec.title || ''}
                           onChange={(e) => {
                             const sections = [...(quiz.sections || [])];
@@ -613,6 +628,58 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({ quiz: initialQuiz, onB
                               setQuiz({ ...quiz, sections });
                             }}
                           />
+                        )}
+                        {sec.type === 'price' && (
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-[10px] uppercase font-bold opacity-50 mb-1 block">Preço Original (R$ 997,00)</label>
+                              <input 
+                                className="w-full bg-slate-900 border-slate-800 rounded-xl text-xs p-3"
+                                value={sec.priceData?.originalPrice || ''}
+                                onChange={(e) => {
+                                  const sections = [...(quiz.sections || [])];
+                                  sections[si] = { ...sec, priceData: { ...(sec.priceData || {}), originalPrice: e.target.value } };
+                                  setQuiz({ ...quiz, sections });
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] uppercase font-bold opacity-50 mb-1 block">Label Parcelas (12x DE)</label>
+                              <input 
+                                className="w-full bg-slate-900 border-slate-800 rounded-xl text-xs p-3"
+                                value={sec.priceData?.installmentsLabel || ''}
+                                onChange={(e) => {
+                                  const sections = [...(quiz.sections || [])];
+                                  sections[si] = { ...sec, priceData: { ...(sec.priceData || {}), installmentsLabel: e.target.value } };
+                                  setQuiz({ ...quiz, sections });
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] uppercase font-bold opacity-50 mb-1 block">Valor Parcelado (R$ 30,72)</label>
+                              <input 
+                                className="w-full bg-slate-900 border-slate-800 rounded-xl text-xs p-3 font-bold text-indigo-400"
+                                value={sec.priceData?.installmentPrice || ''}
+                                onChange={(e) => {
+                                  const sections = [...(quiz.sections || [])];
+                                  sections[si] = { ...sec, priceData: { ...(sec.priceData || {}), installmentPrice: e.target.value } };
+                                  setQuiz({ ...quiz, sections });
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] uppercase font-bold opacity-50 mb-1 block">Rodapé (ou R$ 297,00 à vista)</label>
+                              <input 
+                                className="w-full bg-slate-900 border-slate-800 rounded-xl text-xs p-3"
+                                value={sec.priceData?.footerLabel || ''}
+                                onChange={(e) => {
+                                  const sections = [...(quiz.sections || [])];
+                                  sections[si] = { ...sec, priceData: { ...(sec.priceData || {}), footerLabel: e.target.value } };
+                                  setQuiz({ ...quiz, sections });
+                                }}
+                              />
+                            </div>
+                          </div>
                         )}
                       </div>
                     ))}
@@ -722,6 +789,126 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({ quiz: initialQuiz, onB
                     <input value={quiz.tracking.facebookPixelId || ''} onChange={(e) => setQuiz({ ...quiz, tracking: { ...quiz.tracking, facebookPixelId: e.target.value } })} className="w-full bg-slate-950 border-slate-800 rounded-xl p-4" placeholder="Facebook Pixel ID" />
                     <input value={quiz.tracking.googleAnalyticsId || ''} onChange={(e) => setQuiz({ ...quiz, tracking: { ...quiz.tracking, googleAnalyticsId: e.target.value } })} className="w-full bg-slate-950 border-slate-800 rounded-xl p-4" placeholder="GA4 ID (G-XXXXX)" />
                   </div>
+                </div>
+
+                <div className="h-px bg-slate-800/50" />
+
+                <div>
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h3 className="text-xl font-bold text-indigo-400">Captura de Leads (Popup Final)</h3>
+                      <p className="text-[10px] text-slate-500">Exibe um formulário antes de levar o usuário ao checkout.</p>
+                    </div>
+                    <button
+                      onClick={() => setQuiz({ 
+                        ...quiz, 
+                        leadCapture: { 
+                          enabled: !quiz.leadCapture?.enabled,
+                          title: quiz.leadCapture?.title || 'Quase lá! Para onde enviamos seu resultado?',
+                          buttonText: quiz.leadCapture?.buttonText || 'Ver meu resultado agora',
+                          fields: quiz.leadCapture?.fields || {
+                            name: { enabled: true, required: true },
+                            email: { enabled: true, required: true },
+                            phone: { enabled: true, required: true }
+                          }
+                        } 
+                      })}
+                      className={`w-12 h-6 rounded-full transition-colors relative ${quiz.leadCapture?.enabled ? 'bg-indigo-600' : 'bg-slate-700'}`}
+                    >
+                      <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${quiz.leadCapture?.enabled ? 'right-1' : 'left-1'}`} />
+                    </button>
+                  </div>
+                  
+                  {quiz.leadCapture?.enabled && (
+                    <div className="bg-slate-950 p-6 rounded-3xl border border-slate-800 space-y-6 animate-in fade-in slide-in-from-top-2">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="col-span-2">
+                          <label className="block text-xs font-bold uppercase opacity-50 mb-2">Plataforma de Checkout (Para Pre-população)</label>
+                          <select 
+                            value={quiz.leadCapture.platform || 'KIWIFY'} 
+                            onChange={(e) => setQuiz({ ...quiz, leadCapture: { ...quiz.leadCapture!, platform: e.target.value as any } })} 
+                            className="w-full bg-slate-900 border-slate-800 rounded-xl p-3 text-sm text-white"
+                          >
+                            <option value="KIWIFY">Kiwify</option>
+                            <option value="HOTMART">Hotmart</option>
+                            <option value="PERFECC">Perfecc</option>
+                            <option value="CUSTOM">Outra / Customizada</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold uppercase opacity-50 mb-2">Título do Popup</label>
+                          <input 
+                            value={quiz.leadCapture.title || ''} 
+                            onChange={(e) => setQuiz({ ...quiz, leadCapture: { ...quiz.leadCapture!, title: e.target.value } })} 
+                            className="w-full bg-slate-900 border-slate-800 rounded-xl p-3 text-sm" 
+                            placeholder="Ex: Quase lá! Onde enviamos seu resultado?"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold uppercase opacity-50 mb-2">Texto do Botão</label>
+                          <input 
+                            value={quiz.leadCapture.buttonText || ''} 
+                            onChange={(e) => setQuiz({ ...quiz, leadCapture: { ...quiz.leadCapture!, buttonText: e.target.value } })} 
+                            className="w-full bg-slate-900 border-slate-800 rounded-xl p-3 text-sm" 
+                            placeholder="Ex: Ver meu resultado agora"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Configurar Campos</h4>
+                        
+                        {([
+                          { key: 'name', label: 'Nome Completo' },
+                          { key: 'email', label: 'E-mail' },
+                          { key: 'phone', label: 'WhatsApp / Telefone' }
+                        ] as const).map((field) => (
+                          <div key={field.key} className="flex items-center justify-between p-3 bg-slate-900 rounded-xl border border-slate-800/50">
+                            <span className="text-sm font-bold">{field.label}</span>
+                            <div className="flex items-center gap-4">
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input 
+                                  type="checkbox" 
+                                  checked={quiz.leadCapture?.fields[field.key].enabled} 
+                                  onChange={(e) => {
+                                    const newFields = { ...quiz.leadCapture!.fields };
+                                    newFields[field.key].enabled = e.target.checked;
+                                    setQuiz({ ...quiz, leadCapture: { ...quiz.leadCapture!, fields: newFields } });
+                                  }}
+                                  className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-indigo-600 focus:ring-0"
+                                />
+                                <span className="text-[10px] font-bold uppercase opacity-50">Ativo</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input 
+                                  type="checkbox" 
+                                  checked={quiz.leadCapture?.fields[field.key].required} 
+                                  onChange={(e) => {
+                                    const newFields = { ...quiz.leadCapture!.fields };
+                                    newFields[field.key].required = e.target.checked;
+                                    setQuiz({ ...quiz, leadCapture: { ...quiz.leadCapture!, fields: newFields } });
+                                  }}
+                                  className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-indigo-600 focus:ring-0"
+                                />
+                                <span className="text-[10px] font-bold uppercase opacity-50">Obrigatório</span>
+                              </label>
+                            </div>
+                          </div>
+                        ))}
+
+                        <div className="col-span-2 mt-4 pt-4 border-t border-slate-800/50">
+                          <label className="block text-xs font-bold uppercase opacity-50 mb-2">Webhook de Lead (Opcional)</label>
+                          <input 
+                            className="w-full bg-slate-900 border-slate-800 rounded-xl p-3 text-sm text-indigo-400 font-mono"
+                            placeholder="https://sua-url-de-webhook.com"
+                            value={quiz.leadCapture.webhookUrl || ''}
+                            onChange={(e) => setQuiz({ ...quiz, leadCapture: { ...quiz.leadCapture!, webhookUrl: e.target.value } })} 
+                          />
+                          <p className="text-[10px] text-slate-500 mt-2 italic">Enviaremos os dados do lead para esta URL assim que ele preencher o formulário.</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

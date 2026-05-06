@@ -66,10 +66,16 @@ export interface TrackingConfig {
 
 export interface OutcomeSection {
   id: string;
-  type: 'text' | 'image' | 'video' | 'features';
+  type: 'text' | 'image' | 'video' | 'features' | 'price' | 'button';
   title?: string;
   content?: string;
   mediaUrl?: string;
+  priceData?: {
+    originalPrice?: string;
+    installmentsLabel?: string;
+    installmentPrice?: string;
+    footerLabel?: string;
+  };
 }
 
 export interface QuizOutcome {
@@ -83,6 +89,22 @@ export interface QuizOutcome {
   redirectUrl: string;
 }
 
+export type CheckoutPlatform = 'KIWIFY' | 'HOTMART' | 'PERFECC' | 'CUSTOM';
+
+export interface LeadCaptureConfig {
+  enabled: boolean;
+  title?: string;
+  subtitle?: string;
+  buttonText?: string;
+  platform?: CheckoutPlatform;
+  fields: {
+    name: { enabled: boolean; required: boolean };
+    email: { enabled: boolean; required: boolean };
+    phone: { enabled: boolean; required: boolean };
+  };
+  webhookUrl?: string;
+}
+
 export interface Quiz {
   id: string;
   title: string;
@@ -91,11 +113,13 @@ export interface Quiz {
   questions: Question[];
   theme: QuizTheme;
   tracking: TrackingConfig;
+  leadCapture?: LeadCaptureConfig;
   redirectUrl: string;
   webhookUrl?: string;
   showScore: boolean;
   scoringSystem: ScoringSystem;
   autoRedirectDelay?: number; // em segundos
+  hideDefaultButton?: boolean;
   outcomes?: QuizOutcome[];
   sections?: OutcomeSection[];
   active: boolean;

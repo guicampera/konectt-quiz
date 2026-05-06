@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Quiz, Question, QuestionType, ScoringSystem } from '../types';
 import { Trophy, CheckCircle, XCircle, ArrowRight, Check, ChevronRight, HelpCircle } from 'lucide-react';
-import { saveResult } from '../services/storage';
+import { saveResult, updateLead } from '../services/storage';
 import { trackQuestionAnswer, trackQuestionView, trackQuizView, trackConversion, trackQuizDuration } from '../services/storage';
 import { trackEvent } from '../services/analytics';
 import { Popup } from './Popup';
@@ -22,6 +22,10 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [isFinished, setIsFinished] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
+  const [isLeadPopupOpen, setIsLeadPopupOpen] = useState(false);
+  const [leadFormData, setLeadFormData] = useState({ name: '', email: '', phone: '' });
+  const [pendingRedirectUrl, setPendingRedirectUrl] = useState('');
+  const [createdLeadId, setCreatedLeadId] = useState<string | null>(null);
 
   // Feedback States
   const [isProcessingAnswer, setIsProcessingAnswer] = useState(false);
@@ -283,7 +287,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
     const durationSeconds = Math.round((Date.now() - startTime.current) / 1000);
 
     if (quiz.active) {
-      await saveResult({
+      const { data } = await saveResult({
         quizId: quiz.id,
         answers: finalAnswers,
         score: quiz.scoringSystem === ScoringSystem.POINTS ? totalPoints : correctAnswersCount,
@@ -292,13 +296,8 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
         durationSeconds,
         completedAt: new Date().toISOString()
       });
+      if (data?.id) setCreatedLeadId(data.id);
     }
-
-    trackEvent('Lead', {
-      value: totalPoints,
-      currency: 'BRL',
-      content_name: quiz.title
-    });
 
     // Determine final outcome
     let finalRedirect = quiz.redirectUrl;
@@ -317,9 +316,107 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
     // Only set timeout if delay > 0
     if (customDelay > 0) {
       setTimeout(() => {
-        if (finalRedirect) window.location.href = appendUTMParams(finalRedirect);
-        else onExit();
+        if (finalRedirect) {
+          if (quiz.leadCapture?.enabled) {
+            setPendingRedirectUrl(finalRedirect);
+            setIsLeadPopupOpen(true);
+          } else {
+            window.location.href = appendUTMParams(finalRedirect);
+          }
+        } else {
+          onExit();
+        }
       }, customDelay * 1000);
+    }
+  };
+
+  const handleResultButtonClick = (url: string) => {
+    if (quiz.leadCapture?.enabled) {
+      setPendingRedirectUrl(url);
+      setIsLeadPopupOpen(true);
+    } else {
+      window.location.href = appendUTMParams(url);
+    }
+  };
+
+  const handleLeadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Update the existing lead with capture info
+    if (quiz.active && createdLeadId) {
+      await updateLead(createdLeadId, {
+        answers: { ...answers, ...leadFormData },
+        score: quiz.scoringSystem === ScoringSystem.POINTS ? Object.values(answers).reduce((acc: number, val: any) => typeof val === 'number' ? acc + val : acc, 0) : correctAnswersCount,
+      });
+    }
+
+    // Trigger Lead event only now that we have the contact info
+    const totalScore = quiz.scoringSystem === ScoringSystem.POINTS ? Object.values(answers).reduce((acc: number, val: any) => typeof val === 'number' ? acc + val : acc, 0) : correctAnswersCount;
+
+    trackEvent('Lead', {
+      value: totalScore,
+      currency: 'BRL',
+      content_name: quiz.title
+    });
+
+    // Fire Lead Webhook if configured
+    if (quiz.leadCapture?.webhookUrl) {
+      try {
+        await fetch(quiz.leadCapture.webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event: 'lead_capture',
+            quiz: { id: quiz.id, title: quiz.title },
+            lead: { id: createdLeadId, ...leadFormData },
+            results: { answers, score: totalScore }
+          })
+        });
+      } catch (err) {
+        console.error('Webhook error (continuing...):', err);
+      }
+    }
+
+    window.location.href = appendLeadDataToUrl(pendingRedirectUrl, quiz.leadCapture?.platform, leadFormData);
+  };
+
+  const formatPhone = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 11);
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+    if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  };
+
+  const appendLeadDataToUrl = (url: string, platform?: string, data?: any) => {
+    if (!data) return appendUTMParams(url);
+    
+    // Create URL object to manage params safely
+    try {
+      const baseUrl = appendUTMParams(url);
+      const urlObj = new URL(baseUrl.startsWith('http') ? baseUrl : `https://${baseUrl}`);
+      
+      const cleanPhone = data.phone?.replace(/\D/g, '');
+
+      if (platform === 'KIWIFY') {
+        if (data.name) urlObj.searchParams.set('name', data.name);
+        if (data.email) urlObj.searchParams.set('email', data.email);
+        if (cleanPhone) urlObj.searchParams.set('mobile', cleanPhone);
+      } else if (platform === 'HOTMART') {
+        if (data.name) urlObj.searchParams.set('name', data.name);
+        if (data.email) urlObj.searchParams.set('email', data.email);
+        if (cleanPhone) urlObj.searchParams.set('phone', cleanPhone);
+      } else {
+        // PERFECC or CUSTOM/Generic
+        if (data.name) urlObj.searchParams.set('name', data.name);
+        if (data.email) urlObj.searchParams.set('email', data.email);
+        if (cleanPhone) urlObj.searchParams.set('phone', cleanPhone);
+      }
+      
+      return urlObj.toString();
+    } catch (e) {
+      console.error('Error appending lead data to URL:', e);
+      return appendUTMParams(url);
     }
   };
 
@@ -398,13 +495,13 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
             </div>
           )}
 
-          {(matchedOutcome?.buttonText && (matchedOutcome.redirectUrl || quiz.redirectUrl)) && (
-            <motion.a
-              href={appendUTMParams(matchedOutcome.redirectUrl || quiz.redirectUrl)}
+          {(matchedOutcome?.buttonText && (matchedOutcome.redirectUrl || quiz.redirectUrl) && !quiz.hideDefaultButton) && (
+            <motion.button
+              onClick={() => handleResultButtonClick(matchedOutcome.redirectUrl || quiz.redirectUrl)}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
-              className="w-full py-5 rounded-2xl font-black text-xl shadow-2xl transition-all block text-center mb-6 no-underline hover:brightness-110 active:scale-[0.98] transform-gpu"
+              className="w-full py-5 rounded-2xl font-black text-xl shadow-2xl transition-all block text-center mb-6 hover:brightness-110 active:scale-[0.98] transform-gpu"
               style={{ 
                 backgroundColor: quiz.theme.primaryColor, 
                 color: '#fff',
@@ -412,7 +509,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
               }}
             >
               {matchedOutcome.buttonText}
-            </motion.a>
+            </motion.button>
           )}
 
           {/* Sales Page Sections (Global) */}
@@ -463,6 +560,69 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
                       ))}
                     </div>
                   )}
+
+                  {section.type === 'price' && section.priceData && (
+                    <div className="flex flex-col items-center justify-center py-6 text-center">
+                      {section.priceData.originalPrice && (
+                        <p className="text-base md:text-lg opacity-60 mb-4">
+                          de <span className="line-through decoration-pink-500 decoration-2">{section.priceData.originalPrice}</span> por apenas:
+                        </p>
+                      )}
+                      
+                      <div className="flex items-center justify-center gap-4 mb-4">
+                        {section.priceData.installmentsLabel && (
+                          <div className="flex flex-col items-end leading-tight">
+                            <span className="text-2xl font-bold">{section.priceData.installmentsLabel.split(' ')[0]}</span>
+                            <span className="text-xs font-black uppercase opacity-60">{section.priceData.installmentsLabel.split(' ')[1] || 'DE'}</span>
+                          </div>
+                        )}
+                        <div className="text-7xl md:text-8xl font-black tracking-tighter">
+                          {section.priceData.installmentPrice}
+                        </div>
+                      </div>
+
+                      {section.priceData.footerLabel && (
+                        <p className="text-xl font-medium opacity-80 mb-6">
+                          {section.priceData.footerLabel}
+                        </p>
+                      )}
+
+                      {/* CTA Button directly under the price as requested */}
+                      {(matchedOutcome?.buttonText && (matchedOutcome.redirectUrl || quiz.redirectUrl)) && (
+                        <motion.button
+                          onClick={() => handleResultButtonClick(matchedOutcome.redirectUrl || quiz.redirectUrl)}
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          className="w-full py-5 rounded-2xl font-black text-xl shadow-2xl transition-all block text-center hover:brightness-110 transform-gpu"
+                          style={{ 
+                            backgroundColor: quiz.theme.primaryColor, 
+                            color: '#fff',
+                            borderRadius: quiz.theme.buttonRadius === 'none' ? '0px' : quiz.theme.buttonRadius === 'md' ? '12px' : '999px'
+                          }}
+                        >
+                          {matchedOutcome.buttonText}
+                        </motion.button>
+                      )}
+                    </div>
+                  )}
+
+                  {section.type === 'button' && (matchedOutcome?.buttonText && (matchedOutcome.redirectUrl || quiz.redirectUrl)) && (
+                    <div className="py-4">
+                      <motion.button
+                        onClick={() => handleResultButtonClick(matchedOutcome.redirectUrl || quiz.redirectUrl)}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="w-full py-5 rounded-2xl font-black text-xl shadow-2xl transition-all block text-center hover:brightness-110 transform-gpu"
+                        style={{ 
+                          backgroundColor: quiz.theme.primaryColor, 
+                          color: '#fff',
+                          borderRadius: quiz.theme.buttonRadius === 'none' ? '0px' : quiz.theme.buttonRadius === 'md' ? '12px' : '999px'
+                        }}
+                      >
+                        {matchedOutcome.buttonText}
+                      </motion.button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -486,6 +646,91 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
             </div>
           )}
         </motion.div>
+
+        {/* Lead Capture Popup */}
+        <AnimatePresence>
+          {isLeadPopupOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }} 
+                animate={{ opacity: 1 }} 
+                exit={{ opacity: 0 }} 
+                onClick={() => setIsLeadPopupOpen(false)}
+                className="absolute inset-0 bg-black/80 backdrop-blur-md" 
+              />
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="relative w-full max-w-md bg-slate-900 border border-white/10 p-8 rounded-[2.5rem] shadow-2xl"
+                style={{ color: quiz.theme.textColor }}
+              >
+                <h3 className="text-2xl font-black mb-2 text-center">{quiz.leadCapture?.title || 'Quase lá!'}</h3>
+                <p className="text-sm opacity-60 text-center mb-8">{quiz.leadCapture?.subtitle || 'Preencha seus dados para acessar o resultado completo.'}</p>
+                
+                <form onSubmit={handleLeadSubmit} className="space-y-4">
+                  {quiz.leadCapture?.fields.name.enabled && (
+                    <div>
+                      <label className="block text-[10px] font-black uppercase opacity-40 mb-2 ml-1 tracking-widest">Seu Nome</label>
+                      <input 
+                        required={quiz.leadCapture.fields.name.required}
+                        type="text" 
+                        value={leadFormData.name}
+                        onChange={(e) => setLeadFormData({...leadFormData, name: e.target.value})}
+                        placeholder="Nome completo"
+                        className="w-full p-4 rounded-2xl bg-white/5 border border-white/10 text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                      />
+                    </div>
+                  )}
+
+                  {quiz.leadCapture?.fields.email.enabled && (
+                    <div>
+                      <label className="block text-[10px] font-black uppercase opacity-40 mb-2 ml-1 tracking-widest">E-mail</label>
+                      <input 
+                        required={quiz.leadCapture.fields.email.required}
+                        type="email" 
+                        value={leadFormData.email}
+                        onChange={(e) => setLeadFormData({...leadFormData, email: e.target.value})}
+                        placeholder="seu@email.com"
+                        className="w-full p-4 rounded-2xl bg-white/5 border border-white/10 text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                      />
+                    </div>
+                  )}
+
+                  {quiz.leadCapture?.fields.phone.enabled && (
+                    <div>
+                      <label className="block text-[10px] font-black uppercase opacity-40 mb-2 ml-1 tracking-widest">WhatsApp / Telefone</label>
+                      <input 
+                        required={quiz.leadCapture.fields.phone.required}
+                        type="tel" 
+                        value={leadFormData.phone}
+                        onChange={(e) => setLeadFormData({...leadFormData, phone: formatPhone(e.target.value)})}
+                        placeholder="(00) 00000-0000"
+                        className="w-full p-4 rounded-2xl bg-white/5 border border-white/10 text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                      />
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    className="w-full py-5 rounded-2xl font-black text-xl shadow-2xl transition-all mt-4 hover:brightness-110 active:scale-[0.98]"
+                    style={{ backgroundColor: quiz.theme.primaryColor, color: '#fff' }}
+                  >
+                    {quiz.leadCapture?.buttonText || 'Ver meu resultado agora'}
+                  </button>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        <Popup
+          isOpen={popupConfig.isOpen}
+          message={popupConfig.message}
+          onClose={() => setPopupConfig(prev => ({ ...prev, isOpen: false }))}
+          themeColor={quiz.theme.primaryColor}
+          textColor={quiz.theme.textColor}
+        />
       </div>
     );
   }
@@ -774,6 +1019,8 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
         themeColor={quiz.theme.primaryColor}
         textColor={quiz.theme.textColor}
       />
+
+      {/* Lead Capture Popup removed from here as it is handled in the results screen */}
 
       <footer className="mt-20 opacity-20 text-[10px] font-bold tracking-[0.2em] uppercase">Built with Konectt Quiz Performance</footer>
     </div>

@@ -43,7 +43,9 @@ export const getQuizzes = async (): Promise<Quiz[]> => {
         active: q.active,
         autoRedirectDelay: q.auto_redirect_delay,
         sections: q.sections || [],
+        leadCapture: q.lead_capture,
         scoringSystem: q.scoring_system || 'CORRECT_WRONG',
+        hideDefaultButton: q.hide_default_button || false,
         createdAt: q.created_at
     }));
 };
@@ -76,7 +78,9 @@ export const getQuizBySlug = async (slug: string): Promise<Quiz | null> => {
         active: data.active,
         autoRedirectDelay: data.auto_redirect_delay,
         sections: data.sections || [],
+        leadCapture: data.lead_capture,
         scoringSystem: data.scoring_system || 'CORRECT_WRONG',
+        hideDefaultButton: data.hide_default_button || false,
         createdAt: data.created_at
     };
 };
@@ -101,7 +105,9 @@ export const saveQuiz = async (quiz: Quiz): Promise<{ error: any }> => {
         outcomes: quiz.outcomes,
         active: quiz.active,
         auto_redirect_delay: quiz.autoRedirectDelay,
-        sections: quiz.sections || []
+        lead_capture: quiz.leadCapture,
+        sections: quiz.sections || [],
+        hide_default_button: quiz.hideDefaultButton || false
     };
 
     const { error } = await supabase
@@ -164,6 +170,17 @@ export const saveResult = async (result: QuizResult): Promise<{ error: any }> =>
         }
     }
 
+    return { data: leadData, error };
+};
+
+export const updateLead = async (leadId: string, data: any) => {
+    const { error } = await supabase
+        .from('leads')
+        .update({
+            answers: data.answers,
+            score: data.score
+        })
+        .eq('id', leadId);
     return { error };
 };
 
