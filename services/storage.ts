@@ -155,14 +155,14 @@ export const saveResult = async (result: QuizResult): Promise<{ error: any }> =>
             fetch(quizData.webhook_url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                mode: 'no-cors', // Use no-cors to avoid preflight issues with typical webhooks
                 body: JSON.stringify({
                     event: 'quiz_completed',
                     quiz_title: quizData.title,
                     lead: {
                         ...result,
                         id: leadData?.id
-                    }
+                    },
+                    context: result.context
                 })
             }).catch(e => console.error('Webhook failed:', e));
         } catch (e) {

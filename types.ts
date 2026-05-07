@@ -135,6 +135,7 @@ export interface QuizResult {
   totalQuestions?: number;
   durationSeconds?: number;
   completedAt: string;
+  context?: any;
 }
 
 export interface StepStats {

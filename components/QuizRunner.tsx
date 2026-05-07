@@ -8,6 +8,7 @@ import { trackQuestionAnswer, trackQuestionView, trackQuizView, trackConversion,
 import { trackEvent } from '../services/analytics';
 import { Popup } from './Popup';
 import { appendUTMParams } from '../services/utm';
+import { getUserContext } from '../services/user-context';
 
 interface QuizRunnerProps {
   quiz: Quiz;
@@ -287,6 +288,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
     const durationSeconds = Math.round((Date.now() - startTime.current) / 1000);
 
     if (quiz.active) {
+      const userContext = await getUserContext();
       const { data } = await saveResult({
         quizId: quiz.id,
         answers: finalAnswers,
@@ -294,7 +296,8 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
         totalCorrect: correctAnswersCount,
         totalQuestions: totalScorableQuestions,
         durationSeconds,
-        completedAt: new Date().toISOString()
+        completedAt: new Date().toISOString(),
+        context: userContext
       });
       if (data?.id) setCreatedLeadId(data.id);
     }
@@ -362,6 +365,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
     // Fire Lead Webhook if configured
     if (quiz.leadCapture?.webhookUrl) {
       try {
+        const userContext = await getUserContext();
         await fetch(quiz.leadCapture.webhookUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -369,7 +373,8 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
             event: 'lead_capture',
             quiz: { id: quiz.id, title: quiz.title },
             lead: { id: createdLeadId, ...leadFormData },
-            results: { answers, score: totalScore }
+            results: { answers, score: totalScore },
+            context: userContext
           })
         });
       } catch (err) {
