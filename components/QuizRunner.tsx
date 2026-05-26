@@ -455,10 +455,10 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
     const matchedOutcome = sorted.find(o => scorePercent >= o.minPercentage) || sorted[sorted.length - 1];
 
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 text-center relative overflow-hidden" style={{ backgroundColor: quiz.theme.backgroundColor, color: quiz.theme.textColor }}>
-        <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="max-w-xl w-full relative z-10 bg-slate-900/40 backdrop-blur-xl border border-white/10 p-8 rounded-[2rem] shadow-2xl">
+      <div className="min-h-screen flex flex-col p-6 pb-28 md:pb-6 text-center relative overflow-hidden" style={{ backgroundColor: quiz.theme.backgroundColor, color: quiz.theme.textColor }}>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }} className="max-w-xl w-full m-auto relative z-10 bg-slate-900/40 backdrop-blur-xl border border-white/10 p-8 rounded-[2rem] shadow-2xl">
           {matchedOutcome?.mediaUrl ? (
-            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mb-6 rounded-2xl overflow-hidden shadow-lg bg-black/10">
+            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mb-6 rounded-2xl overflow-hidden shadow-lg bg-black/10 min-h-[200px] flex items-center justify-center">
               <img src={matchedOutcome.mediaUrl} className="w-full h-auto object-contain" alt="Resultado" />
             </motion.div>
           ) : (
@@ -651,6 +651,24 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ quiz, onExit }) => {
             </div>
           )}
         </motion.div>
+
+        {/* Mobile Sticky CTA Button */}
+        {(matchedOutcome?.buttonText && (matchedOutcome.redirectUrl || quiz.redirectUrl)) && (
+          <div className="fixed bottom-0 left-0 right-0 p-4 bg-slate-950/80 backdrop-blur-md border-t border-white/10 z-[60] md:hidden animate-in slide-in-from-bottom-full duration-500">
+            <motion.button
+              onClick={() => handleResultButtonClick(matchedOutcome.redirectUrl || quiz.redirectUrl)}
+              whileTap={{ scale: 0.98 }}
+              className="w-full py-4 rounded-2xl font-black text-lg shadow-2xl"
+              style={{ 
+                backgroundColor: quiz.theme.primaryColor, 
+                color: '#fff',
+                borderRadius: quiz.theme.buttonRadius === 'none' ? '0px' : quiz.theme.buttonRadius === 'md' ? '12px' : '999px'
+              }}
+            >
+              {matchedOutcome.buttonText}
+            </motion.button>
+          </div>
+        )}
 
         {/* Lead Capture Popup */}
         <AnimatePresence>
